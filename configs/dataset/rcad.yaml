@@ -1,0 +1,18 @@
+train:
+  root_dir: '/DataA/pwz/workshop/Datasets/RCAD/train'
+  inp_dir: 'inp'
+  ref_dir: 'ref'
+  width: 256
+  height: 256
+val:
+  root_dir: '/DataA/pwz/workshop/Datasets/RCAD/val'
+  inp_dir: 'inp'
+  ref_dir: 'ref'
+  width: 256
+  height: 256
+test:
+  root_dir: '/DataA/pwz/workshop/Datasets/RCAD/test'
+  inp_dir: 'inp'
+  ref_dir: 'ref'
+  width: 256
+  height: 256

@@ -1,0 +1,12 @@
+name: ege_unet
+num_classes: 8
+input_nc: 3
+c_list:
+  - 8
+  - 16
+  - 24
+  - 32
+  - 48
+  - 64
+bridge: true
+gt_ds: true
