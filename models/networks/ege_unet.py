@@ -2,7 +2,6 @@
 import torch
 from torch import nn
 import torch.nn.functional as F
-from einops import rearrange
 
 from timm.models.layers import trunc_normal_
 import math
@@ -152,10 +151,6 @@ class Grouped_multi_axis_Hadamard_Product_Attention(nn.Module):
         x = self.norm2(x)
         x = self.ldw(x)
         return x
-
-
-
-    
     
 
 class EGEUNet(nn.Module):
@@ -266,43 +261,38 @@ class EGEUNet(nn.Module):
         t6 = out
         
         out5 = F.gelu(self.dbn1(self.decoder1(out))) # b, c4, H/32, W/32
+        gt_pre5 = self.gt_conv1(out5)
+        t5 = self.GAB5(t6, t5, gt_pre5)
         if self.gt_ds: 
-            gt_pre5 = self.gt_conv1(out5)
-            t5 = self.GAB5(t6, t5, gt_pre5)
             gt_pre5 = F.interpolate(gt_pre5, scale_factor=32, mode ='bilinear', align_corners=True)
-        else: t5 = self.GAB5(t6, t5)
         out5 = torch.add(out5, t5) # b, c4, H/32, W/32
         
         out4 = F.gelu(F.interpolate(self.dbn2(self.decoder2(out5)),scale_factor=(2,2),mode ='bilinear',align_corners=True)) # b, c3, H/16, W/16
+        gt_pre4 = self.gt_conv2(out4)
+        t4 = self.GAB4(t5, t4, gt_pre4)
         if self.gt_ds: 
-            gt_pre4 = self.gt_conv2(out4)
-            t4 = self.GAB4(t5, t4, gt_pre4)
             gt_pre4 = F.interpolate(gt_pre4, scale_factor=16, mode ='bilinear', align_corners=True)
-        else:t4 = self.GAB4(t5, t4)
         out4 = torch.add(out4, t4) # b, c3, H/16, W/16
         
         out3 = F.gelu(F.interpolate(self.dbn3(self.decoder3(out4)),scale_factor=(2,2),mode ='bilinear',align_corners=True)) # b, c2, H/8, W/8
+        gt_pre3 = self.gt_conv3(out3)
+        t3 = self.GAB3(t4, t3, gt_pre3)
         if self.gt_ds: 
-            gt_pre3 = self.gt_conv3(out3)
-            t3 = self.GAB3(t4, t3, gt_pre3)
             gt_pre3 = F.interpolate(gt_pre3, scale_factor=8, mode ='bilinear', align_corners=True)
-        else: t3 = self.GAB3(t4, t3)
         out3 = torch.add(out3, t3) # b, c2, H/8, W/8
         
         out2 = F.gelu(F.interpolate(self.dbn4(self.decoder4(out3)),scale_factor=(2,2),mode ='bilinear',align_corners=True)) # b, c1, H/4, W/4
+        gt_pre2 = self.gt_conv4(out2)
+        t2 = self.GAB2(t3, t2, gt_pre2)
         if self.gt_ds: 
-            gt_pre2 = self.gt_conv4(out2)
-            t2 = self.GAB2(t3, t2, gt_pre2)
             gt_pre2 = F.interpolate(gt_pre2, scale_factor=4, mode ='bilinear', align_corners=True)
-        else: t2 = self.GAB2(t3, t2)
         out2 = torch.add(out2, t2) # b, c1, H/4, W/4 
         
         out1 = F.gelu(F.interpolate(self.dbn5(self.decoder5(out2)),scale_factor=(2,2),mode ='bilinear',align_corners=True)) # b, c0, H/2, W/2
+        gt_pre1 = self.gt_conv5(out1)
+        t1 = self.GAB1(t2, t1, gt_pre1)
         if self.gt_ds: 
-            gt_pre1 = self.gt_conv5(out1)
-            t1 = self.GAB1(t2, t1, gt_pre1)
             gt_pre1 = F.interpolate(gt_pre1, scale_factor=2, mode ='bilinear', align_corners=True)
-        else: t1 = self.GAB1(t2, t1)
         out1 = torch.add(out1, t1) # b, c0, H/2, W/2
         
         out0 = F.interpolate(self.final(out1),scale_factor=(2,2),mode ='bilinear',align_corners=True) # b, num_class, H, W

@@ -4,6 +4,7 @@ from typing import Dict, Any
 from .color_enhance import ColorEnhancementNet
 from .ranet import RANet
 from .ege_unet import EGEUNet
+from .fcn import FCN
 
 
 def create_network(cfg: Dict[str, Any]):
@@ -21,8 +22,9 @@ def create_network(cfg: Dict[str, Any]):
             use_att_up = cfg['use_att_up']
         )
     elif name == 'fcn':
-        net = fcn_resnet50(
-            num_classes = cfg['num_classes']
+        net = FCN(
+            num_classes = cfg['num_classes'],
+            backbone = cfg['backbone']
         )
     elif name == 'ege_unet':
         net = EGEUNet(

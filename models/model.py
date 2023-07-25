@@ -271,7 +271,7 @@ class SegModel(BaseModel):
 
     def forward(self):
         self.network.train()
-        self.pred_masks = self.network(self.inp_imgs)['out']
+        self.pred_masks = self.network(self.inp_imgs)
         self.train_metrics['mIoU'] = self.calc_mIOU(self.pred_masks, self.ref_masks, len(self.color_map))
 
     def optimize_parameters(self):
@@ -313,7 +313,7 @@ class SegModel(BaseModel):
         inp_imgs = input_['img'].to(self.device)
         ref_masks = input_['mask'].to(self.device)
         with torch.no_grad():
-            pred_masks = self.network(inp_imgs)['out']
+            pred_masks = self.network(inp_imgs)
 
             self.val_loss['ce'] = self.ce_loss_fn(pred_masks, ref_masks)
             self.val_loss['dice'] = self.dice_loss_fn(pred_masks, ref_masks)
@@ -332,7 +332,7 @@ class SegModel(BaseModel):
         with torch.no_grad():
             self.network.eval()
             t_start = time.time()
-            pred_masks = self.network(inp_imgs)['out']
+            pred_masks = self.network(inp_imgs)
             t_elapse_avg = (time.time() - t_start) / num
         full_img = self._gen_comparison_img(inp_imgs.cpu(), pred_masks.cpu(), ref_masks.cpu())
 
