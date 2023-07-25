@@ -138,20 +138,20 @@ val_interval = args.val_interval
 ckpt_interval = args.ckpt_interval
 for epoch in range(args.start_epoch, args.start_epoch + args.num_epochs):
     for i, batch in enumerate(train_dl):
-        model.set_input(batch)
-        model.optimize_parameters()
-        # print training loss
-        if (iteration_index % val_interval == 0) or (i == len(train_dl)-1):
-            logger.info("[iteration: {:d}, lr: {:f}] [Epoch {:d}/{:d}, batch {:d}/{:d}] [Loss: {:.3f}]".format(
-                iteration_index, model.optimizer.param_groups[0]['lr'],
-                epoch, args.start_epoch + args.num_epochs-1, i, len(train_dl)-1,
-                model.train_loss['total'].item()
-            ))
+        # train one batch
+        model.train(batch)
+        
         # validation
         if (iteration_index % val_interval == 0) or (i == len(train_dl)-1):
             val_batch = next(iter(val_dl))
             model.validate(val_batch, iteration_index)
             model.write_tensorboard(iteration_index)
+
+            logger.info("[iteration: {:d}, lr: {:f}] [Epoch {:d}/{:d}, batch {:d}/{:d}] [train_loss: {:.3f}, val_loss: {:.3f}]".format(
+                iteration_index, model.optimizer.param_groups[0]['lr'],
+                epoch, args.start_epoch + args.num_epochs-1, i, len(train_dl)-1,
+                model.train_loss['total'].item(), model.val_loss['total'].item()
+            ))
         iteration_index += 1
     # adjust lr
     model.adjust_lr()

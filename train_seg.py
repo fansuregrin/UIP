@@ -137,8 +137,8 @@ val_interval = args.val_interval
 ckpt_interval = args.ckpt_interval
 for epoch in range(args.start_epoch, args.start_epoch + args.num_epochs):
     for i, batch in enumerate(train_dl):
-        model.set_input(batch)
-        model.optimize_parameters()
+        # train one batch
+        model.train(batch)
         # validation
         if (iteration_index % val_interval == 0) or (i == len(train_dl)-1):
             val_batch = next(iter(val_dl))

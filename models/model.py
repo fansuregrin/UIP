@@ -10,6 +10,7 @@ from abc import ABC
 from abc import abstractmethod
 from typing import Union, Dict, Any
 from kornia.losses import SSIMLoss, PSNRLoss
+from kornia.metrics import psnr, ssim
 from torchvision.utils import draw_segmentation_masks
 import cv2
 
@@ -29,12 +30,6 @@ def create_model(name, cfg):
 
 class BaseModel(ABC):
     """Abstract base class (ABC) for models.
-
-    To create a subclass, you need to implement the following five functions:
-        <__init__>: initialize the class; first call BaseModel.__init__(self, opt).\n
-        <set_input>: unpack data from dataset and apply preprocessing.\n
-        <forward>: produce intermediate results.\n
-        <optimize_parameters>: calculate losses, gradients, and update network weights.
     """
     def __init__(self, cfg: Dict[str, Any]):
         """Initialize the BaseModel class.
@@ -73,27 +68,6 @@ class BaseModel(ABC):
         else:
             assert f"{self.mode} is not supported!"
 
-    @abstractmethod
-    def set_input(self, input_: Dict):
-        """Unpack input data from the dataloader and perform necessary pre-processing steps.
-
-        Args:
-            input_: 
-        """
-        pass
-
-    @abstractmethod
-    def forward(self):
-        """Forward pass.
-        """
-        pass
-
-    @abstractmethod
-    def optimize_parameters(self):
-        """Calculate losses, gradients, and update weights.
-        """
-        pass
-
 
 class ImgEnhanceModel(BaseModel):
     """
@@ -112,11 +86,8 @@ class ImgEnhanceModel(BaseModel):
             self.lambda_psnr = cfg['lambda_psnr']
             self.train_loss = {}
             self.val_loss = {}
-    
-    def set_input(self, input_: Dict):
-        self.inp_imgs = input_['inp'].to(self.device)
-        self.ref_imgs = input_['ref'].to(self.device)
-        self.imgs_names = input_['img_name']
+            self.train_metrics = {}
+            self.val_metrics = {}
 
     def _set_optimizer(self):
         params = self.network.parameters()
@@ -142,22 +113,23 @@ class ImgEnhanceModel(BaseModel):
         self.mae_loss_fn = nn.L1Loss().to(self.device)
         self.ssim_loss_fn = SSIMLoss(11).to(self.device)
         self.psnr_loss_fn = PSNRLoss(1.0).to(self.device)
-    
-    def forward(self):
-        self.network.train()
-        self.pred_imgs = self.network(self.inp_imgs)
 
-    def optimize_parameters(self):
+    def train(self, input_: Dict):
+        inp_imgs = input_['inp'].to(self.device)
+        ref_imgs = input_['ref'].to(self.device)
         self.optimizer.zero_grad()
-        self.forward()
-        self.train_loss['mae'] = self.mae_loss_fn(self.pred_imgs, self.ref_imgs)
-        self.train_loss['ssim'] = self.ssim_loss_fn(self.pred_imgs, self.ref_imgs)
-        self.train_loss['psnr'] = self.psnr_loss_fn(self.pred_imgs, self.ref_imgs)
+        self.network.train()
+        pred_imgs = self.network(inp_imgs)
+        self.train_loss['mae'] = self.mae_loss_fn(pred_imgs, ref_imgs)
+        self.train_loss['ssim'] = self.ssim_loss_fn(pred_imgs, ref_imgs)
+        self.train_loss['psnr'] = self.psnr_loss_fn(pred_imgs, ref_imgs)
         self.train_loss['total'] = self.lambda_mae * self.train_loss['mae'] + \
                           self.lambda_ssim * self.train_loss['ssim'] +\
                           self.lambda_psnr * self.train_loss['psnr']
         self.train_loss['total'].backward()
         self.optimizer.step()
+        self.train_metrics['psnr'] = psnr(pred_imgs, ref_imgs, 1.0)
+        self.train_metrics['ssim'] = ssim(pred_imgs, ref_imgs, 11).mean()
     
     def adjust_lr(self):
         if self.lr_scheduler is not None:
@@ -169,6 +141,13 @@ class ImgEnhanceModel(BaseModel):
                                        {
                                            'train': self.train_loss[loss_name],
                                            'val': self.val_loss[loss_name],
+                                       },
+                                       iteration)
+        for metric_name in self.train_metrics.keys():
+            self.tb_writer.add_scalars(f'metrics/{metric_name}',
+                                       {
+                                           'train': self.train_metrics[metric_name],
+                                           'val': self.val_metrics[metric_name],
                                        },
                                        iteration)
     
@@ -189,6 +168,9 @@ class ImgEnhanceModel(BaseModel):
             self.val_loss['total'] = self.lambda_mae * self.val_loss['mae'] + \
                             self.lambda_ssim * self.val_loss['ssim'] +\
                             self.lambda_psnr * self.val_loss['psnr']
+            
+            self.val_metrics['psnr'] = psnr(pred_imgs, ref_imgs, 1.0)
+            self.val_metrics['ssim'] = ssim(pred_imgs, ref_imgs, 11).mean()
 
             full_img = self._gen_comparison_img(inp_imgs, pred_imgs, ref_imgs)
             full_img = cv2.cvtColor(full_img, cv2.COLOR_RGB2BGR)
@@ -239,11 +221,6 @@ class SegModel(BaseModel):
             self.val_metrics = {}
             self.lambda_ce = cfg['lambda_ce']
             self.lambda_dice = cfg['lambda_dice']
-        
-    def set_input(self, input_: Dict):
-        self.inp_imgs = input_['img'].to(self.device)
-        self.ref_masks = input_['mask'].to(self.device)
-        self.imgs_names = input_['img_name']
 
     def _set_optimizer(self):
         params = self.network.parameters()
@@ -269,14 +246,13 @@ class SegModel(BaseModel):
         self.ce_loss_fn = nn.CrossEntropyLoss().to(self.device)
         self.dice_loss_fn = DiceLoss('micro').to(self.device)
 
-    def forward(self):
-        self.network.train()
-        self.pred_masks = self.network(self.inp_imgs)
-        self.train_metrics['mIoU'] = self.calc_mIOU(self.pred_masks, self.ref_masks, len(self.color_map))
-
-    def optimize_parameters(self):
+    def train(self, input_: Dict):
+        inp_imgs = input_['img'].to(self.device)
+        ref_masks = input_['mask'].to(self.device)
         self.optimizer.zero_grad()
-        self.forward()
+        self.network.train()
+        pred_masks = self.network(inp_imgs)
+        self.train_metrics['mIoU'] = self.calc_mIOU(pred_masks, ref_masks, len(self.color_map))
         self.train_loss['ce'] = self.ce_loss_fn(self.pred_masks, self.ref_masks)
         self.train_loss['dice'] = self.dice_loss_fn(self.pred_masks, self.ref_masks)
         self.train_loss['total'] = self.train_loss['ce'] * self.lambda_ce +\
