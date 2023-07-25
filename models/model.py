@@ -253,8 +253,8 @@ class SegModel(BaseModel):
         self.network.train()
         pred_masks = self.network(inp_imgs)
         self.train_metrics['mIoU'] = self.calc_mIOU(pred_masks, ref_masks, len(self.color_map))
-        self.train_loss['ce'] = self.ce_loss_fn(self.pred_masks, self.ref_masks)
-        self.train_loss['dice'] = self.dice_loss_fn(self.pred_masks, self.ref_masks)
+        self.train_loss['ce'] = self.ce_loss_fn(pred_masks, ref_masks)
+        self.train_loss['dice'] = self.dice_loss_fn(pred_masks, ref_masks)
         self.train_loss['total'] = self.train_loss['ce'] * self.lambda_ce +\
                                    self.train_loss['dice'] * self.lambda_dice
         self.train_loss['total'].backward()
