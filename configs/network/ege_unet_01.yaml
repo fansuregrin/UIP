@@ -9,4 +9,4 @@ c_list:
   - 48
   - 64
 bridge: true
-gt_ds: true
+gt_ds: false
