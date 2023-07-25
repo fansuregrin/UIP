@@ -45,47 +45,54 @@ class LayerNorm(nn.Module):
     
 
 class group_aggregation_bridge(nn.Module):
-    def __init__(self, dim_xh, dim_xl, k_size=3, d_list=[1,2,5,7]):
+    def __init__(self, dim_xh, dim_xl, k_size=3, d_list=[1,2,5,7], use_mask=True):
         super().__init__()
         self.pre_project = nn.Conv2d(dim_xh, dim_xl, 1)
-        group_size = dim_xl // 2
+        group_size = (dim_xl // 2 + 1) if use_mask else (dim_xl // 2)
         self.g0 = nn.Sequential(
-            LayerNorm(normalized_shape=group_size+1, data_format='channels_first'),
-            nn.Conv2d(group_size + 1, group_size + 1, kernel_size=3, stride=1, 
+            LayerNorm(normalized_shape=group_size, data_format='channels_first'),
+            nn.Conv2d(group_size, group_size, kernel_size=3, stride=1, 
                       padding=(k_size+(k_size-1)*(d_list[0]-1))//2, 
-                      dilation=d_list[0], groups=group_size + 1)
+                      dilation=d_list[0], groups=group_size)
         )
         self.g1 = nn.Sequential(
-            LayerNorm(normalized_shape=group_size+1, data_format='channels_first'),
-            nn.Conv2d(group_size + 1, group_size + 1, kernel_size=3, stride=1, 
+            LayerNorm(normalized_shape=group_size, data_format='channels_first'),
+            nn.Conv2d(group_size, group_size, kernel_size=3, stride=1, 
                       padding=(k_size+(k_size-1)*(d_list[1]-1))//2, 
-                      dilation=d_list[1], groups=group_size + 1)
+                      dilation=d_list[1], groups=group_size)
         )
         self.g2 = nn.Sequential(
-            LayerNorm(normalized_shape=group_size+1, data_format='channels_first'),
-            nn.Conv2d(group_size + 1, group_size + 1, kernel_size=3, stride=1, 
+            LayerNorm(normalized_shape=group_size, data_format='channels_first'),
+            nn.Conv2d(group_size, group_size, kernel_size=3, stride=1, 
                       padding=(k_size+(k_size-1)*(d_list[2]-1))//2, 
-                      dilation=d_list[2], groups=group_size + 1)
+                      dilation=d_list[2], groups=group_size)
         )
         self.g3 = nn.Sequential(
-            LayerNorm(normalized_shape=group_size+1, data_format='channels_first'),
-            nn.Conv2d(group_size + 1, group_size + 1, kernel_size=3, stride=1, 
+            LayerNorm(normalized_shape=group_size, data_format='channels_first'),
+            nn.Conv2d(group_size, group_size, kernel_size=3, stride=1, 
                       padding=(k_size+(k_size-1)*(d_list[3]-1))//2, 
-                      dilation=d_list[3], groups=group_size + 1)
+                      dilation=d_list[3], groups=group_size)
         )
         self.tail_conv = nn.Sequential(
-            LayerNorm(normalized_shape=dim_xl * 2 + 4, data_format='channels_first'),
-            nn.Conv2d(dim_xl * 2 + 4, dim_xl, 1)
+            LayerNorm(normalized_shape=group_size*4, data_format='channels_first'),
+            nn.Conv2d(group_size*4, dim_xl, 1)
         )
-    def forward(self, xh, xl, mask):
+
+    def forward(self, xh, xl, mask=None):
         xh = self.pre_project(xh)
         xh = F.interpolate(xh, size=[xl.size(2), xl.size(3)], mode ='bilinear', align_corners=True)
         xh = torch.chunk(xh, 4, dim=1)
         xl = torch.chunk(xl, 4, dim=1)
-        x0 = self.g0(torch.cat((xh[0], xl[0], mask), dim=1))
-        x1 = self.g1(torch.cat((xh[1], xl[1], mask), dim=1))
-        x2 = self.g2(torch.cat((xh[2], xl[2], mask), dim=1))
-        x3 = self.g3(torch.cat((xh[3], xl[3], mask), dim=1))
+        if not mask is None:
+            x0 = self.g0(torch.cat((xh[0], xl[0], mask), dim=1))
+            x1 = self.g1(torch.cat((xh[1], xl[1], mask), dim=1))
+            x2 = self.g2(torch.cat((xh[2], xl[2], mask), dim=1))
+            x3 = self.g3(torch.cat((xh[3], xl[3], mask), dim=1))
+        else:
+            x0 = self.g0(torch.cat((xh[0], xl[0]), dim=1))
+            x1 = self.g1(torch.cat((xh[1], xl[1]), dim=1))
+            x2 = self.g2(torch.cat((xh[2], xl[2]), dim=1))
+            x3 = self.g3(torch.cat((xh[3], xl[3]), dim=1))
         x = torch.cat((x0,x1,x2,x3), dim=1)
         x = self.tail_conv(x)
         return x
@@ -154,7 +161,6 @@ class Grouped_multi_axis_Hadamard_Product_Attention(nn.Module):
     
 
 class EGEUNet(nn.Module):
-    
     def __init__(self, num_classes=1, input_channels=3, c_list=[8,16,24,32,48,64], bridge=True, gt_ds=True):
         super().__init__()
 
@@ -180,20 +186,34 @@ class EGEUNet(nn.Module):
             Grouped_multi_axis_Hadamard_Product_Attention(c_list[4], c_list[5]),
         )
 
-        if bridge: 
-            self.GAB1 = group_aggregation_bridge(c_list[1], c_list[0])
-            self.GAB2 = group_aggregation_bridge(c_list[2], c_list[1])
-            self.GAB3 = group_aggregation_bridge(c_list[3], c_list[2])
-            self.GAB4 = group_aggregation_bridge(c_list[4], c_list[3])
-            self.GAB5 = group_aggregation_bridge(c_list[5], c_list[4])
+        if bridge:
             print('group_aggregation_bridge was used')
-        if gt_ds:
-            self.gt_conv1 = nn.Sequential(nn.Conv2d(c_list[4], 1, 1))
-            self.gt_conv2 = nn.Sequential(nn.Conv2d(c_list[3], 1, 1))
-            self.gt_conv3 = nn.Sequential(nn.Conv2d(c_list[2], 1, 1))
-            self.gt_conv4 = nn.Sequential(nn.Conv2d(c_list[1], 1, 1))
-            self.gt_conv5 = nn.Sequential(nn.Conv2d(c_list[0], 1, 1))
-            print('gt deep supervision was used')
+            if gt_ds:
+                self.GAB1 = group_aggregation_bridge(c_list[1], c_list[0])
+                self.GAB2 = group_aggregation_bridge(c_list[2], c_list[1])
+                self.GAB3 = group_aggregation_bridge(c_list[3], c_list[2])
+                self.GAB4 = group_aggregation_bridge(c_list[4], c_list[3])
+                self.GAB5 = group_aggregation_bridge(c_list[5], c_list[4])
+                self.gt_conv1 = nn.Sequential(nn.Conv2d(c_list[4], 1, 1))
+                self.gt_conv2 = nn.Sequential(nn.Conv2d(c_list[3], 1, 1))
+                self.gt_conv3 = nn.Sequential(nn.Conv2d(c_list[2], 1, 1))
+                self.gt_conv4 = nn.Sequential(nn.Conv2d(c_list[1], 1, 1))
+                self.gt_conv5 = nn.Sequential(nn.Conv2d(c_list[0], 1, 1))
+                print('gt deep supervision was used')
+            else:
+                self.GAB1 = group_aggregation_bridge(c_list[1], c_list[0], use_mask=False)
+                self.GAB2 = group_aggregation_bridge(c_list[2], c_list[1], use_mask=False)
+                self.GAB3 = group_aggregation_bridge(c_list[3], c_list[2], use_mask=False)
+                self.GAB4 = group_aggregation_bridge(c_list[4], c_list[3], use_mask=False)
+                self.GAB5 = group_aggregation_bridge(c_list[5], c_list[4], use_mask=False)
+        else:
+            if gt_ds:
+                self.gt_conv1 = nn.Sequential(nn.Conv2d(c_list[4], 1, 1))
+                self.gt_conv2 = nn.Sequential(nn.Conv2d(c_list[3], 1, 1))
+                self.gt_conv3 = nn.Sequential(nn.Conv2d(c_list[2], 1, 1))
+                self.gt_conv4 = nn.Sequential(nn.Conv2d(c_list[1], 1, 1))
+                self.gt_conv5 = nn.Sequential(nn.Conv2d(c_list[0], 1, 1))
+                print('gt deep supervision was used')
         
         self.decoder1 = nn.Sequential(
             Grouped_multi_axis_Hadamard_Product_Attention(c_list[5], c_list[4]),
@@ -261,38 +281,69 @@ class EGEUNet(nn.Module):
         t6 = out
         
         out5 = F.gelu(self.dbn1(self.decoder1(out))) # b, c4, H/32, W/32
-        gt_pre5 = self.gt_conv1(out5)
-        t5 = self.GAB5(t6, t5, gt_pre5)
-        if self.gt_ds: 
-            gt_pre5 = F.interpolate(gt_pre5, scale_factor=32, mode ='bilinear', align_corners=True)
+        if self.bridge:
+            if self.gt_ds:
+                gt_pre5 = self.gt_conv1(out5)
+                t5 = self.GAB5(t6, t5, gt_pre5)
+                gt_pre5 = F.interpolate(gt_pre5, scale_factor=32, mode ='bilinear', align_corners=True)
+            else:
+                t5 = self.GAB5(t6, t5)
+        else:
+            if self.gt_ds:
+                gt_pre5 = self.gt_conv1(out5)
+                gt_pre5 = F.interpolate(gt_pre5, scale_factor=32, mode ='bilinear', align_corners=True)
         out5 = torch.add(out5, t5) # b, c4, H/32, W/32
         
         out4 = F.gelu(F.interpolate(self.dbn2(self.decoder2(out5)),scale_factor=(2,2),mode ='bilinear',align_corners=True)) # b, c3, H/16, W/16
-        gt_pre4 = self.gt_conv2(out4)
-        t4 = self.GAB4(t5, t4, gt_pre4)
-        if self.gt_ds: 
+        if self.bridge:
+            if self.gt_ds:
+                gt_pre4 = self.gt_conv2(out4)
+                t4 = self.GAB4(t5, t4, gt_pre4)
+                gt_pre4 = F.interpolate(gt_pre4, scale_factor=16, mode ='bilinear', align_corners=True)
+            else:
+                t4 = self.GAB4(t5, t4)
+        else:
+            gt_pre4 = self.gt_conv2(out4)
             gt_pre4 = F.interpolate(gt_pre4, scale_factor=16, mode ='bilinear', align_corners=True)
         out4 = torch.add(out4, t4) # b, c3, H/16, W/16
         
         out3 = F.gelu(F.interpolate(self.dbn3(self.decoder3(out4)),scale_factor=(2,2),mode ='bilinear',align_corners=True)) # b, c2, H/8, W/8
-        gt_pre3 = self.gt_conv3(out3)
-        t3 = self.GAB3(t4, t3, gt_pre3)
-        if self.gt_ds: 
+        if self.bridge:
+            if self.gt_ds: 
+                gt_pre3 = self.gt_conv3(out3)
+                t3 = self.GAB3(t4, t3, gt_pre3)
+                gt_pre3 = F.interpolate(gt_pre3, scale_factor=8, mode ='bilinear', align_corners=True)
+            else:
+                t3 = self.GAB3(t4, t3)
+        else:
+            gt_pre3 = self.gt_conv3(out3)
             gt_pre3 = F.interpolate(gt_pre3, scale_factor=8, mode ='bilinear', align_corners=True)
         out3 = torch.add(out3, t3) # b, c2, H/8, W/8
         
         out2 = F.gelu(F.interpolate(self.dbn4(self.decoder4(out3)),scale_factor=(2,2),mode ='bilinear',align_corners=True)) # b, c1, H/4, W/4
-        gt_pre2 = self.gt_conv4(out2)
-        t2 = self.GAB2(t3, t2, gt_pre2)
-        if self.gt_ds: 
+        if self.bridge:
+            if self.gt_ds: 
+                gt_pre2 = self.gt_conv4(out2)
+                t2 = self.GAB2(t3, t2, gt_pre2)
+                gt_pre2 = F.interpolate(gt_pre2, scale_factor=4, mode ='bilinear', align_corners=True)
+            else:
+                t2 = self.GAB2(t3, t2)
+        else:
+            gt_pre2 = self.gt_conv4(out2)
             gt_pre2 = F.interpolate(gt_pre2, scale_factor=4, mode ='bilinear', align_corners=True)
         out2 = torch.add(out2, t2) # b, c1, H/4, W/4 
         
         out1 = F.gelu(F.interpolate(self.dbn5(self.decoder5(out2)),scale_factor=(2,2),mode ='bilinear',align_corners=True)) # b, c0, H/2, W/2
-        gt_pre1 = self.gt_conv5(out1)
-        t1 = self.GAB1(t2, t1, gt_pre1)
-        if self.gt_ds: 
-            gt_pre1 = F.interpolate(gt_pre1, scale_factor=2, mode ='bilinear', align_corners=True)
+        if self.bridge:
+            if self.gt_ds: 
+                gt_pre1 = self.gt_conv5(out1)
+                t1 = self.GAB1(t2, t1, gt_pre1)
+                gt_pre1 = F.interpolate(gt_pre1, scale_factor=2, mode ='bilinear', align_corners=True)
+            else:
+                t1 = self.GAB1(t2, t1)
+        else:
+            gt_pre1 = self.gt_conv5(out1)
+            gt_pre1 = F.interpolate(gt_pre1, scale_factor=2, mode ='bilinear', align_corners=True)       
         out1 = torch.add(out1, t1) # b, c0, H/2, W/2
         
         out0 = F.interpolate(self.final(out1),scale_factor=(2,2),mode ='bilinear',align_corners=True) # b, num_class, H, W
