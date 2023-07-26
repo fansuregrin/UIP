@@ -1,4 +1,3 @@
-from torchvision.models.segmentation import fcn_resnet50
 from typing import Dict, Any
 
 from .color_enhance import ColorEnhancementNet
