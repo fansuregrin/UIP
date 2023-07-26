@@ -12,6 +12,9 @@ from typing import Union, Dict, Any
 from kornia.losses import SSIMLoss, PSNRLoss
 from kornia.metrics import psnr, ssim
 from torchvision.utils import draw_segmentation_masks
+from torch.utils.data import DataLoader
+from torchvision.utils import save_image
+from tqdm import tqdm
 import cv2
 
 from .initialize import init_weight_bias
@@ -91,7 +94,7 @@ class ImgEnhanceModel(BaseModel):
             self.checkpoint_dir = cfg['checkpoint_dir']
             self.result_dir = cfg['result_dir']
         
-    def load_weights(self, weights_fp):
+    def load_weights(self, weights_fp: str):
         self.network.load_state_dict(torch.load(weights_fp))
         if self.logger:
             self.logger.info('Loaded model weights from {}.'.format(
@@ -123,7 +126,8 @@ class ImgEnhanceModel(BaseModel):
         self.ssim_loss_fn = SSIMLoss(11).to(self.device)
         self.psnr_loss_fn = PSNRLoss(1.0).to(self.device)
 
-    def train(self, train_dl, val_dl):
+    def train(self, train_dl: DataLoader, val_dl: DataLoader):
+        assert self.mode == 'train', f"The mode must be 'train', but got {self.mode}"
         iteration_index = self.start_iteration
         for epoch in range(self.start_epoch, self.start_epoch + self.num_epochs):
             for i, batch in enumerate(train_dl):
@@ -171,7 +175,7 @@ class ImgEnhanceModel(BaseModel):
         if self.lr_scheduler is not None:
             self.lr_scheduler.step()
     
-    def write_tensorboard(self, iteration):
+    def write_tensorboard(self, iteration: int):
         for loss_name in self.train_loss.keys():
             self.tb_writer.add_scalars(f'loss/{loss_name}',
                                        {
@@ -187,7 +191,7 @@ class ImgEnhanceModel(BaseModel):
                                        },
                                        iteration)
     
-    def save_model_weights(self, epoch):
+    def save_model_weights(self, epoch: int):
         saved_path = os.path.join(self.checkpoint_dir, "weights_{:d}.pth".format(epoch))
         torch.save(self.network.state_dict(), saved_path)
         if self.logger:
@@ -213,18 +217,49 @@ class ImgEnhanceModel(BaseModel):
             full_img = cv2.cvtColor(full_img, cv2.COLOR_RGB2BGR)
             cv2.imwrite(os.path.join(self.sample_dir, f'{iteration:06d}.png'), full_img)
     
-    def test(self, input_: Dict):
-        inp_imgs = input_['inp'].to(self.device)
-        ref_imgs = input_['ref'].to(self.device) if 'ref' in input_ else None
-        num = len(inp_imgs)
-        with torch.no_grad():
-            self.network.eval()
-            t_start = time.time()
-            pred_imgs = self.network(inp_imgs)
-            t_elapse_avg = (time.time() - t_start) / num
-        full_img = self._gen_comparison_img(inp_imgs, pred_imgs, ref_imgs)
+    def test(self, test_dl: DataLoader):
+        assert self.mode == 'test', f"The mode must be 'test', but got {self.mode}"
+        t_elapse_list = []
+        idx = 1
+        psnr_val_list = []
+        ssim_val_list = []
+        for batch in tqdm(test_dl):
+            inp_imgs = batch['inp'].to(self.device)
+            ref_imgs = batch['ref'].to(self.device) if 'ref' in batch else None
+            img_names = batch['img_name']
+            num = len(inp_imgs)
+            with torch.no_grad():
+                self.network.eval()
+                t_start = time.time()
+                pred_imgs = self.network(inp_imgs)
+                
+                # average inference time consumed by one batch
+                t_elapse_avg = (time.time() - t_start) / num
+                t_elapse_list.append(t_elapse_avg)
 
-        return full_img, t_elapse_avg
+                # record metrics values
+                psnr_val = psnr(pred_imgs, ref_imgs, 1.0).item()
+                ssim_val = ssim(pred_imgs, ref_imgs, 11, 1.0).mean().item()
+                psnr_val_list.append(psnr_val)
+                ssim_val_list.append(ssim_val)
+
+                # record visual results
+                full_img = self._gen_comparison_img(inp_imgs, pred_imgs, ref_imgs)
+                full_img = cv2.cvtColor(full_img, cv2.COLOR_RGB2BGR)
+                cv2.imwrite(os.path.join(self.result_dir, 'paired', f'{idx:06d}.png'), full_img)
+                with open(os.path.join(self.result_dir, 'paired', f"{idx:06d}.txt"), 'w') as f:
+                    f.write('\n'.join(img_names))
+                for (img_name, inp_img, pred_img, ref_img) in zip(
+                    img_names, inp_imgs, pred_imgs, ref_imgs):
+                    save_image(inp_img.data, os.path.join(self.result_dir, 'single/input', img_name))
+                    save_image(pred_img.data, os.path.join(self.result_dir, 'single/predicted', img_name))
+            idx += 1
+
+        frame_rate = 1 / (sum(t_elapse_list) / len(t_elapse_list))
+        psnr_val = sum(psnr_val_list) / len(psnr_val_list)
+        ssim_val = sum(ssim_val_list) / len(ssim_val_list)
+
+        return (frame_rate, psnr_val, ssim_val)
     
     def _gen_comparison_img(self, inp_imgs: Tensor, pred_imgs: Tensor, ref_imgs: Union[Tensor, None]):
         inp_imgs = torch.cat([t for t in inp_imgs], dim=2)
