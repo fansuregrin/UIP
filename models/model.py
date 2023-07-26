@@ -35,10 +35,10 @@ class BaseModel(ABC):
         """Initialize the BaseModel class.
 
         Args:
-            cfg: 
+            cfg: Configurations, a `Dict`.
         """
-        self.device = cfg['device']
-        self.logger = cfg['logger']
+        self.device = cfg.get('device', torch.device('cpu'))
+        self.logger =  cfg.get('logger', None)
         self.net_cfg = cfg['net_cfg']
         self.mode = cfg['mode']
         self.cfg = cfg
@@ -56,15 +56,14 @@ class BaseModel(ABC):
             self.start_epoch = self.cfg['start_epoch']
             self.start_iteration = self.cfg['start_iteration']
             self.num_epochs = self.cfg['num_epochs']
+            self.val_interval = self.cfg['val_interval']
+            self.ckpt_interval = self.cfg['ckpt_interval']
             if self.start_epoch == 0:
                 self.network.apply(init_weight_bias)
             else:
-                self.network.load_state_dict(torch.load("checkpoints/%s/%s/weights_%d.pth" % (self.net_name, self.name, self.start_epoch-1)))
-                self.logger.info("Loaded model weights from epoch %d" %(self.start_epoch-1))
-        elif self.mode == 'test':
-            weights_path = self.cfg['weights_path']
-            self.network.load_state_dict(torch.load(weights_path))
-            self.logger.info("Loaded model weights from <{}>".format(weights_path))
+                self.network.load_state_dict(torch.load("{}/weights_{:d}.pth".format(self.checkpoint_dir, self.start_epoch-1)))
+                if self.logger:
+                    self.logger.info("Loaded model weights from epoch {:d}".format(self.start_epoch-1))
         else:
             assert f"{self.mode} is not supported!"
 
@@ -88,6 +87,16 @@ class ImgEnhanceModel(BaseModel):
             self.val_loss = {}
             self.train_metrics = {}
             self.val_metrics = {}
+        elif self.mode == 'test':
+            self.checkpoint_dir = cfg['checkpoint_dir']
+            self.result_dir = cfg['result_dir']
+        
+    def load_weights(self, weights_fp):
+        self.network.load_state_dict(torch.load(weights_fp))
+        if self.logger:
+            self.logger.info('Loaded model weights from {}.'.format(
+                weights_fp
+            ))
 
     def _set_optimizer(self):
         params = self.network.parameters()
@@ -114,7 +123,34 @@ class ImgEnhanceModel(BaseModel):
         self.ssim_loss_fn = SSIMLoss(11).to(self.device)
         self.psnr_loss_fn = PSNRLoss(1.0).to(self.device)
 
-    def train(self, input_: Dict):
+    def train(self, train_dl, val_dl):
+        iteration_index = self.start_iteration
+        for epoch in range(self.start_epoch, self.start_epoch + self.num_epochs):
+            for i, batch in enumerate(train_dl):
+                # train one batch
+                self.train_one_batch(batch)
+                
+                # validation
+                if (iteration_index % self.val_interval == 0) or (i == len(val_dl)-1):
+                    val_batch = next(iter(val_dl))
+                    self.validate_one_batch(val_batch, iteration_index)
+                    self.write_tensorboard(iteration_index)
+
+                    self.logger.info(
+                        "[iteration: {:d}, lr: {:f}] [Epoch {:d}/{:d}, batch {:d}/{:d}] "
+                        "[train_loss: {:.3f}, val_loss: {:.3f}]".format(
+                            iteration_index, self.optimizer.param_groups[0]['lr'],
+                            epoch, self.start_epoch + self.num_epochs-1, i, len(train_dl)-1,
+                            self.train_loss['total'].item(), self.val_loss['total'].item()
+                    ))
+                iteration_index += 1
+            # adjust lr
+            self.adjust_lr()
+            # save model weights
+            if (epoch % self.ckpt_interval == 0) or (epoch == self.num_epochs-1):
+                self.save_model_weights(epoch)
+
+    def train_one_batch(self, input_: Dict):
         inp_imgs = input_['inp'].to(self.device)
         ref_imgs = input_['ref'].to(self.device)
         self.optimizer.zero_grad()
@@ -154,9 +190,10 @@ class ImgEnhanceModel(BaseModel):
     def save_model_weights(self, epoch):
         saved_path = os.path.join(self.checkpoint_dir, "weights_{:d}.pth".format(epoch))
         torch.save(self.network.state_dict(), saved_path)
-        self.logger.info("Saved model weights into {}".format(saved_path))
+        if self.logger:
+            self.logger.info("Saved model weights into {}".format(saved_path))
 
-    def validate(self, input_: Dict, iteration):
+    def validate_one_batch(self, input_: Dict, iteration):
         inp_imgs = input_['inp'].to(self.device)
         ref_imgs = input_['ref'].to(self.device)
         with torch.no_grad():
@@ -283,7 +320,8 @@ class SegModel(BaseModel):
     def save_model_weights(self, epoch):
         saved_path = os.path.join(self.checkpoint_dir, "weights_{:d}.pth".format(epoch))
         torch.save(self.network.state_dict(), saved_path)
-        self.logger.info("Saved model weights into {}".format(saved_path))
+        if self.logger:
+            self.logger.info("Saved model weights into {}".format(saved_path))
 
     def validate(self, input_: Dict, iteration):
         inp_imgs = input_['img'].to(self.device)
