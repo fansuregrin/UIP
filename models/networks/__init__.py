@@ -5,6 +5,7 @@ from .color_enhance import ColorEnhancementNet
 from .ranet import RANet
 from .ege_unet import EGEUNet
 from .fcn import FCN
+from .unet import UNet
 
 
 def create_network(cfg: Dict[str, Any]):
@@ -33,6 +34,14 @@ def create_network(cfg: Dict[str, Any]):
             cfg['c_list'],
             cfg['bridge'],
             cfg['gt_ds']
+        )
+    elif name == 'unet':
+        net = UNet(
+            cfg['input_nc'],
+            cfg['output_nc'],
+            cfg['ngf'],
+            cfg['norm_layer'],
+            cfg['use_dropout']
         )
     else:
         assert f"<{name}> is not supported!"

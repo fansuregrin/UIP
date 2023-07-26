@@ -69,11 +69,11 @@ class RANet(nn.Module):
                          use_dropout=use_dropout))
         self.um = nn.Sequential(*um)
 
-        # Feature Map Smoothing Module (FMSM) and Tanh Activation Layer
+        # Feature Map Smoothing Module (FMSM) and Sigmoid Activation Layer
         self.fmsm = nn.Sequential(
             nn.ReflectionPad2d(3),
             nn.Conv2d(ngf, output_nc, kernel_size=7, padding=0),
-            nn.Tanh()
+            nn.Sigmoid()
         )
 
     def _create_wrpm(self,
