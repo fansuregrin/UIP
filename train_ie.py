@@ -120,6 +120,8 @@ model_cfg = {
     'start_epoch': args.start_epoch,
     'start_iteration': args.start_iteration,
     'num_epochs': args.num_epochs,
+    'val_interval': args.val_interval,
+    'ckpt_interval': args.ckpt_interval,
     'optimizer': {
         'name': args.optimizer,
         'lr': args.lr,
@@ -132,29 +134,4 @@ model_cfg = {
 }
 model = create_model(model_v, model_cfg)
 
-# Training pipeline
-iteration_index = args.start_iteration
-val_interval = args.val_interval
-ckpt_interval = args.ckpt_interval
-for epoch in range(args.start_epoch, args.start_epoch + args.num_epochs):
-    for i, batch in enumerate(train_dl):
-        # train one batch
-        model.train(batch)
-        
-        # validation
-        if (iteration_index % val_interval == 0) or (i == len(train_dl)-1):
-            val_batch = next(iter(val_dl))
-            model.validate(val_batch, iteration_index)
-            model.write_tensorboard(iteration_index)
-
-            logger.info("[iteration: {:d}, lr: {:f}] [Epoch {:d}/{:d}, batch {:d}/{:d}] [train_loss: {:.3f}, val_loss: {:.3f}]".format(
-                iteration_index, model.optimizer.param_groups[0]['lr'],
-                epoch, args.start_epoch + args.num_epochs-1, i, len(train_dl)-1,
-                model.train_loss['total'].item(), model.val_loss['total'].item()
-            ))
-        iteration_index += 1
-    # adjust lr
-    model.adjust_lr()
-    # save model weights
-    if (epoch % ckpt_interval == 0) or (epoch == args.num_epochs-1):
-        model.save_model_weights(epoch)
+model.train(train_dl, val_dl)
