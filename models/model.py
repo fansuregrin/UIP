@@ -223,7 +223,7 @@ class ImgEnhanceModel(BaseModel):
     def test(self, test_dl: DataLoader, epoch: int, test_name: str):
         assert self.mode == 'test', f"The mode must be 'test', but got {self.mode}"
         
-        result_dir = os.path.join(self.result_dir, test_name, str(epoch))
+        result_dir = os.path.join(self.result_dir, test_name, f"epoch_{epoch}")
         if os.path.exists(result_dir):
             shutil.rmtree(result_dir)
         os.makedirs(result_dir)
@@ -278,8 +278,8 @@ class ImgEnhanceModel(BaseModel):
                     '{:.1f},{:.3f},{:.3f}'.format(frame_rate, psnr_val, ssim_val))
         if self.logger:
             self.logger.info(
-                'framte_rate: {:.1f} fps, psnr: {:.3f}, ssim: {:.3f}'.format(
-                    frame_rate, psnr_val, ssim_val
+                '[epoch: {:d}] [framte_rate: {:.1f} fps, psnr: {:.3f}, ssim: {:.3f}]'.format(
+                    epoch, frame_rate, psnr_val, ssim_val
                 )
             )
 

@@ -23,7 +23,7 @@ parser.add_argument('--test_name', type=str, help='name for test dataset')
 parser.add_argument('--checkpoint_dir', type=str, default='checkpoints', help='path to checkpoint dir')
 parser.add_argument("--result_dir", type=str, default="results")
 parser.add_argument("--batch_size", type=int, default=4, help="size of batches")
-parser.add_argument("--epoch", type=int, default=99, help="which epoch to load")
+parser.add_argument("--epoch", type=int, nargs='+', default=99, help="which epoch to load")
 args = parser.parse_args()
 
 model_v = 'ie'
@@ -91,5 +91,14 @@ model_cfg = {
 model = create_model(model_v, model_cfg)
 
 # Test pipeline
-model.load_weights(f'weights_{args.epoch}.pth')
-frame_rate, psnr, ssim = model.test(test_dl, args.epoch, args.test_name)
+f = open(
+    os.path.join(result_dir, args.test_name, 'metrics.csv'),
+    'w')
+f.write('epoch,frame_rate,psnr,ssim\n')
+for epoch in args.epoch:
+    model.load_weights(f'weights_{epoch}.pth')
+    frame_rate, psnr, ssim = model.test(test_dl, epoch, args.test_name)
+    f.write('{:d},{:.1f},{:.3f},{:.3f}\n'.format(
+        epoch, frame_rate, psnr, ssim
+    ))
+f.close()
