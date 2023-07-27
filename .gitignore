@@ -4,3 +4,5 @@ checkpoints/
 runs/
 samples/
 results/
+*.ipynb
+test_code.py

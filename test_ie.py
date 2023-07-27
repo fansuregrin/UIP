@@ -91,6 +91,7 @@ model_cfg = {
 model = create_model(model_v, model_cfg)
 
 # Test pipeline
+os.makedirs(os.path.join(result_dir, args.test_name), exist_ok=True)
 f = open(
     os.path.join(result_dir, args.test_name, 'metrics.csv'),
     'w')
