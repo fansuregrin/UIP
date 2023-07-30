@@ -64,11 +64,6 @@ class BaseModel(ABC):
             self.ckpt_interval = self.cfg['ckpt_interval']
             if self.start_epoch == 0:
                 self.network.apply(init_weight_bias)
-            else:
-                weights_path = self.cfg['weights_path']
-                self.network.load_state_dict(torch.load("{}/{}".format(self.checkpoint_dir, weights_path)))
-                if self.logger:
-                    self.logger.info("Loaded model weights from {}".format(weights_path))
         else:
             assert f"{self.mode} is not supported!"
 
@@ -131,6 +126,9 @@ class ImgEnhanceModel(BaseModel):
 
     def train(self, train_dl: DataLoader, val_dl: DataLoader):
         assert self.mode == 'train', f"The mode must be 'train', but got {self.mode}"
+        assert len(train_dl) * self.start_epoch == self.start_iteration
+        if self.start_epoch > 0:
+            self.load_weights(f'weights_{self.start_epoch-1}.pth')
         iteration_index = self.start_iteration
         for epoch in range(self.start_epoch, self.start_epoch + self.num_epochs):
             for i, batch in enumerate(train_dl):
@@ -138,7 +136,7 @@ class ImgEnhanceModel(BaseModel):
                 self.train_one_batch(batch)
                 
                 # validation
-                if (iteration_index % self.val_interval == 0) or (i == len(val_dl)-1):
+                if (iteration_index % self.val_interval == 0) or (i == len(train_dl)-1):
                     val_batch = next(iter(val_dl))
                     self.validate_one_batch(val_batch, iteration_index)
                     self.write_tensorboard(iteration_index)
