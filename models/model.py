@@ -152,7 +152,7 @@ class ImgEnhanceModel(BaseModel):
             # adjust lr
             self.adjust_lr()
             # save model weights
-            if (epoch % self.ckpt_interval == 0) or (epoch == self.num_epochs-1):
+            if (epoch % self.ckpt_interval == 0) or (epoch == self.start_epoch + self.num_epochs-1):
                 self.save_model_weights(epoch)
 
     def train_one_batch(self, input_: Dict):
