@@ -70,7 +70,8 @@ else:
 
 
 # Data pipeline
-test_ds = create_test_dataset('paired_img', ds_cfg['test'])
+test_ds_type = ds_cfg['test'].get('type', None)
+test_ds = create_test_dataset(test_ds_type, ds_cfg['test'])
 test_dl_cfg = {
     'batch_size': args.batch_size,
     'shuffle': False,

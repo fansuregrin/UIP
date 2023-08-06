@@ -8,5 +8,6 @@ val:
   root_dir: '/DataA/pwz/workshop/Datasets/LSUI/val'
   <<: *train
 test:
+  type: 'paired_img'
   root_dir: '/DataA/pwz/workshop/Datasets/LSUI/test'
   <<: *train
