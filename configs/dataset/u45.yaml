@@ -1,0 +1,5 @@
+test:
+  type: 'single_img'
+  root_dir: '/DataA/pwz/workshop/Datasets/U45/U45'
+  width: 256
+  height: 256
