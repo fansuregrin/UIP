@@ -1,0 +1,4 @@
+name: four
+in_nc: 3
+nc: 64
+out_nc: 3
