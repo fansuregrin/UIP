@@ -5,6 +5,7 @@ from .ranet import RANet
 from .ege_unet import EGEUNet
 from .fcn import FCN
 from .unet import UNet
+from .four_net import FourNet
 
 
 def create_network(cfg: Dict[str, Any]):
@@ -41,6 +42,12 @@ def create_network(cfg: Dict[str, Any]):
             cfg['ngf'],
             cfg['norm_layer'],
             cfg['use_dropout']
+        )
+    elif name == 'four':
+        net = FourNet(
+            cfg['in_nc'],
+            cfg['nc'],
+            cfg['out_nc']
         )
     else:
         assert f"<{name}> is not supported!"
