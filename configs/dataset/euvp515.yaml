@@ -1,0 +1,7 @@
+test:
+  type: 'paired_img'
+  root_dir: '/DataA/pwz/workshop/Datasets/EUVP_Dataset/test_samples'
+  inp_dir: 'Inp'
+  ref_dir: 'GTr'
+  width: 256
+  height: 256

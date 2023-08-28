@@ -1,0 +1,7 @@
+test:
+  type: 'paired_img'
+  root_dir: '/DataA/pwz/workshop/Datasets/ocean_ex'
+  inp_dir: 'poor'
+  ref_dir: 'good'
+  width: 256
+  height: 256

@@ -1,0 +1,7 @@
+test:
+  type: 'paired_img'
+  root_dir: '/DataA/pwz/workshop/Datasets/UIEB100'
+  inp_dir: 'raw'
+  ref_dir: 'reference'
+  width: 256
+  height: 256
