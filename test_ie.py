@@ -52,7 +52,7 @@ logger.add(sys.stdout, format=LOGURU_FORMAT)
 logger.add(os.path.join(log_dir, "test_{time}.log"), format=LOGURU_FORMAT)
 
 # Write some training infomation into log file
-logger.info(f"Starting Training Process...")
+logger.info(f"Starting Test Process...")
 logger.info(f"net_name: {net_name}")
 logger.info(f"result_dir: {result_dir}")
 logger.info(f"checkpoint_dir: {checkpoint_dir}")
