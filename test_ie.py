@@ -96,11 +96,11 @@ os.makedirs(os.path.join(result_dir, args.test_name), exist_ok=True)
 f = open(
     os.path.join(result_dir, args.test_name, 'metrics.csv'),
     'w')
-f.write('epoch,frame_rate,psnr,ssim\n')
+f.write('epoch,frame_rate,psnr,ssim,niqe\n')
 for epoch in args.epoch:
     model.load_weights(f'weights_{epoch}.pth')
-    frame_rate, psnr, ssim = model.test(test_dl, epoch, args.test_name)
-    f.write('{:d},{:.1f},{:.3f},{:.3f}\n'.format(
-        epoch, frame_rate, psnr, ssim
+    frame_rate, psnr, ssim, niqe = model.test(test_dl, epoch, args.test_name)
+    f.write('{:d},{:.1f},{:.3f},{:.3f},{:.3f}\n'.format(
+        epoch, frame_rate, psnr, ssim, niqe
     ))
 f.close()

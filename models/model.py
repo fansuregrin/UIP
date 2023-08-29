@@ -11,10 +11,13 @@ from abc import abstractmethod
 from typing import Union, Dict, Any
 from kornia.losses import SSIMLoss, PSNRLoss
 from kornia.metrics import psnr, ssim
+from kornia.color import rgb_to_ycbcr
 from torchvision.utils import draw_segmentation_masks
 from torch.utils.data import DataLoader
 from torchvision.utils import save_image
 from tqdm import tqdm
+import torch
+import pyiqa
 import cv2
 import shutil
 
@@ -90,6 +93,7 @@ class ImgEnhanceModel(BaseModel):
         elif self.mode == 'test':
             self.checkpoint_dir = cfg['checkpoint_dir']
             self.result_dir = cfg['result_dir']
+            self.niqe = pyiqa.create_metric('niqe', device=self.device)
         
     def load_weights(self, weights_path: str):
         weights_path = os.path.join(self.checkpoint_dir, weights_path)
@@ -233,6 +237,7 @@ class ImgEnhanceModel(BaseModel):
         idx = 1
         psnr_val_list = []
         ssim_val_list = []
+        niqe_val_list = []
         for batch in tqdm(test_dl):
             inp_imgs = batch['inp'].to(self.device)
             ref_imgs = batch['ref'].to(self.device) if 'ref' in batch else None
@@ -253,6 +258,8 @@ class ImgEnhanceModel(BaseModel):
                 cv2.imwrite(os.path.join(result_dir, 'paired', f'{idx:06d}.png'), full_img)
                 with open(os.path.join(result_dir, 'paired', f"{idx:06d}.txt"), 'w') as f:
                     f.write('\n'.join(img_names))
+                niqe_val = self.niqe(rgb_to_ycbcr(pred_imgs)).mean().item()
+                niqe_val_list.append(niqe_val)
                 if not ref_imgs is None:
                     ssim_val = ssim(pred_imgs, ref_imgs, 11, 1.0).mean().item()
                     ssim_val_list.append(ssim_val)
@@ -274,6 +281,7 @@ class ImgEnhanceModel(BaseModel):
             idx += 1
 
         frame_rate = 1 / (sum(t_elapse_list) / len(t_elapse_list))
+        niqe_val = sum(niqe_val_list) / len(niqe_val_list)
         if len(psnr_val_list) > 0 and len(ssim_val_list) > 0:
             psnr_val = sum(psnr_val_list) / len(psnr_val_list)
             ssim_val = sum(ssim_val_list) / len(ssim_val_list)
@@ -284,16 +292,16 @@ class ImgEnhanceModel(BaseModel):
         with open(
             os.path.join(result_dir, 'metrics.csv'),
             'w') as f:
-            f.write('frame_rate,psnr,ssim\n'
-                    '{:.1f},{:.3f},{:.3f}'.format(frame_rate, psnr_val, ssim_val))
+            f.write('frame_rate,psnr,ssim,niqe\n'
+                    '{:.1f},{:.3f},{:.3f},{:.3f}'.format(frame_rate, psnr_val, ssim_val, niqe_val))
         if self.logger:
             self.logger.info(
-                '[epoch: {:d}] [framte_rate: {:.1f} fps, psnr: {:.3f}, ssim: {:.3f}]'.format(
-                    epoch, frame_rate, psnr_val, ssim_val
+                '[epoch: {:d}] [framte_rate: {:.1f} fps, psnr: {:.3f}, ssim: {:.3f}, niqe: {:.3f}]'.format(
+                    epoch, frame_rate, psnr_val, ssim_val, niqe_val
                 )
             )
 
-        return (frame_rate, psnr_val, ssim_val)
+        return (frame_rate, psnr_val, ssim_val, niqe_val)
     
     def _gen_comparison_img(self, inp_imgs: Tensor, pred_imgs: Tensor, ref_imgs: Union[Tensor, None]=None):
         inp_imgs = torch.cat([t for t in inp_imgs], dim=2)
