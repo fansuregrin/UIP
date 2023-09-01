@@ -13,7 +13,7 @@ def get_train_transform(width=256, height=256, process='resize'):
     if process == 'resize':
         get_size = A.Resize(height, width)
     elif process == 'crop':
-        get_size = A.Crop(0, 0, height, width)
+        get_size = A.RandomCrop(height, width)
     elif process == 'center_crop':
         get_size = A.CenterCrop(height, width)
     else:
@@ -37,7 +37,7 @@ def get_val_transform(width=256, height=256, process='resize'):
     if process == 'resize':
         get_size = A.Resize(height, width)
     elif process == 'crop':
-        get_size = A.Crop(0, 0, height, width)
+        get_size = A.RandomCrop(height, width)
     elif process == 'center_crop':
         get_size = A.CenterCrop(height, width)
     else:
@@ -59,7 +59,7 @@ def get_test_transform(width=256, height=256, process='resize'):
     if process == 'resize':
         get_size = A.Resize(height, width)
     elif process == 'crop':
-        get_size = A.Crop(0, 0, height, width)
+        get_size = A.RandomCrop(height, width)
     elif process == 'center_crop':
         get_size = A.CenterCrop(height, width)
     else:
