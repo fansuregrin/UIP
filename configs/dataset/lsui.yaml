@@ -4,6 +4,7 @@ train: &train
   ref_dir: 'ref'
   width: 256
   height: 256
+  preprocess: 'resize'
 val:
   root_dir: '/DataA/pwz/workshop/Datasets/LSUI/val'
   <<: *train

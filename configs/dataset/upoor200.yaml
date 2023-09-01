@@ -3,3 +3,4 @@ test:
   root_dir: '/DataA/pwz/workshop/Datasets/UPoor200'
   width: 256
   height: 256
+  preprocess: 'resize'

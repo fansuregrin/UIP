@@ -5,3 +5,4 @@ test:
   ref_dir: 'good'
   width: 256
   height: 256
+  preprocess: 'resize'

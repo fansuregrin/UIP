@@ -136,7 +136,8 @@ def create_train_dataset(name, config):
             config['ref_dir'],
             get_train_transform(
                 width=config['width'],
-                height=config['height']
+                height=config['height'],
+                process=config['preprocess'] 
             )
         )
     elif name == 'single_img':
@@ -144,7 +145,8 @@ def create_train_dataset(name, config):
             config['root_dir'],
             get_test_transform(
                 width=config['width'],
-                height=config['height']
+                height=config['height'],
+                process=config['preprocess']
             )
         )
     elif name == 'seg':
@@ -155,8 +157,9 @@ def create_train_dataset(name, config):
             config['color_map'],
             get_train_transform(
                 width=config['width'],
-                height=config['height']
-            ) 
+                height=config['height'],
+                process=config['preprocess']
+            )
         )
     return train_ds
 
@@ -170,7 +173,8 @@ def create_val_dataset(name, config):
             config['ref_dir'],
             get_val_transform(
                 width=config['width'],
-                height=config['height']
+                height=config['height'],
+                process=config['preprocess']
             )
         )
     elif name == 'single_img':
@@ -178,7 +182,8 @@ def create_val_dataset(name, config):
             config['root_dir'],
             get_test_transform(
                 width=config['width'],
-                height=config['height']
+                height=config['height'],
+                process=config['preprocess']
             )
         )
     elif name == 'seg':
@@ -189,7 +194,8 @@ def create_val_dataset(name, config):
             config['color_map'],
             get_val_transform(
                 width=config['width'],
-                height=config['height']
+                height=config['height'],
+                process=config['preprocess']
             ) 
         )
     return val_ds
@@ -204,7 +210,8 @@ def create_test_dataset(name, config):
             config['ref_dir'],
             get_test_transform(
                 width=config['width'],
-                height=config['height']
+                height=config['height'],
+                process=config['preprocess']
             )
         )
     elif name == 'single_img':
@@ -212,7 +219,8 @@ def create_test_dataset(name, config):
             config['root_dir'],
             get_test_transform(
                 width=config['width'],
-                height=config['height']
+                height=config['height'],
+                process=config['preprocess']
             )
         )
     elif name == 'seg':
@@ -223,7 +231,8 @@ def create_test_dataset(name, config):
             config['color_map'],
             get_test_transform(
                 width=config['width'],
-                height=config['height']
+                height=config['height'],
+                process=config['preprocess']
             ) 
         )
     return test_ds

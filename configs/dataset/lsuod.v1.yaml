@@ -3,3 +3,4 @@ test:
   root_dir: '/DataA/pwz/workshop/Datasets/LSUOD.v1.images'
   width: 400
   height: 300
+  preprocess: 'resize'

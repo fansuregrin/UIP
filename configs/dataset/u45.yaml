@@ -3,3 +3,4 @@ test:
   root_dir: '/DataA/pwz/workshop/Datasets/U45/U45'
   width: 256
   height: 256
+  preprocess: 'resize'

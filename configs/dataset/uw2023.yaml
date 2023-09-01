@@ -1,0 +1,6 @@
+test:
+  type: 'single_img'
+  root_dir: '/DataA/pwz/workshop/Datasets/UW2023'
+  width: 512
+  height: 512
+  preprocess: 'resize'
