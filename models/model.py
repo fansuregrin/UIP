@@ -124,7 +124,7 @@ class ImgEnhanceModel(BaseModel):
             assert f"<{lr_scheduler['name']}> is supported!"
 
     def _set_loss_fn(self):
-        self.mae_loss_fn = nn.L1Loss().to(self.device)
+        self.mae_loss_fn = nn.L1Loss(reduction=self.cfg['l1_reduction']).to(self.device)
         self.ssim_loss_fn = SSIMLoss(11).to(self.device)
         self.psnr_loss_fn = PSNRLoss(1.0).to(self.device)
 
