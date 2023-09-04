@@ -19,6 +19,7 @@ import cv2
 import shutil
 
 from .base_model import BaseModel
+from .loss import L1CharbonnierLoss
 
 
 class ImgEnhanceModel(BaseModel):
@@ -265,3 +266,22 @@ class ImgEnhanceModel(BaseModel):
             full_img = np.concatenate((inp_imgs, pred_imgs), axis=0)
 
         return full_img
+    
+
+class ImgEnhanceModel2(ImgEnhanceModel):
+    def _set_loss_fn(self):
+        self.l1charbonnier_loss_fn = L1CharbonnierLoss().to(self.device)
+        self.ssim_loss_fn = SSIMLoss(11).to(self.device)
+        self.psnr_loss_fn = PSNRLoss(1.0).to(self.device)
+        self.lambda_l1charbonnier  = self.cfg['lambda_l1charbonnier']
+        self.lambda_ssim = self.cfg['lambda_ssim']
+        self.lambda_psnr = self.cfg['lambda_psnr']
+    
+    def _calculate_loss(self, ref_imgs, pred_imgs, train=True):
+        loss = self.train_loss if train else self.val_loss
+        loss['l1charbonnier'] = self.l1charbonnier_loss_fn(pred_imgs, ref_imgs)
+        loss['ssim'] = self.ssim_loss_fn(pred_imgs, ref_imgs)
+        loss['psnr'] = self.psnr_loss_fn(pred_imgs, ref_imgs)
+        loss['total'] = self.lambda_l1charbonnier * loss['l1charbonnier'] + \
+            self.lambda_ssim * loss['ssim'] +\
+            self.lambda_psnr * loss['psnr']
