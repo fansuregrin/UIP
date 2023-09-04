@@ -33,9 +33,6 @@ class ImgEnhanceModel(BaseModel):
             self._set_lr_scheduler()
             # Set Loss function
             self._set_loss_fn()
-            self.lambda_mae = cfg['lambda_mae']
-            self.lambda_ssim = cfg['lambda_ssim']
-            self.lambda_psnr = cfg['lambda_psnr']
             self.train_loss = {}
             self.val_loss = {}
             self.train_metrics = {}
@@ -77,6 +74,18 @@ class ImgEnhanceModel(BaseModel):
         self.mae_loss_fn = nn.L1Loss(reduction=self.cfg['l1_reduction']).to(self.device)
         self.ssim_loss_fn = SSIMLoss(11).to(self.device)
         self.psnr_loss_fn = PSNRLoss(1.0).to(self.device)
+        self.lambda_mae  = self.cfg['lambda_mae']
+        self.lambda_ssim = self.cfg['lambda_ssim']
+        self.lambda_psnr = self.cfg['lambda_psnr']
+    
+    def _calculate_loss(self, ref_imgs, pred_imgs, train=True):
+        loss = self.train_loss if train else self.val_loss
+        loss['mae'] = self.mae_loss_fn(pred_imgs, ref_imgs)
+        loss['ssim'] = self.ssim_loss_fn(pred_imgs, ref_imgs)
+        loss['psnr'] = self.psnr_loss_fn(pred_imgs, ref_imgs)
+        loss['total'] = self.lambda_mae * loss['mae'] + \
+            self.lambda_ssim * loss['ssim'] +\
+            self.lambda_psnr * loss['psnr']
 
     def train(self, train_dl: DataLoader, val_dl: DataLoader):
         assert self.mode == 'train', f"The mode must be 'train', but got {self.mode}"
@@ -115,12 +124,7 @@ class ImgEnhanceModel(BaseModel):
         self.optimizer.zero_grad()
         self.network.train()
         pred_imgs = self.network(inp_imgs)
-        self.train_loss['mae'] = self.mae_loss_fn(pred_imgs, ref_imgs)
-        self.train_loss['ssim'] = self.ssim_loss_fn(pred_imgs, ref_imgs)
-        self.train_loss['psnr'] = self.psnr_loss_fn(pred_imgs, ref_imgs)
-        self.train_loss['total'] = self.lambda_mae * self.train_loss['mae'] + \
-                          self.lambda_ssim * self.train_loss['ssim'] +\
-                          self.lambda_psnr * self.train_loss['psnr']
+        self._calculate_loss(ref_imgs, pred_imgs)
         self.train_loss['total'].backward()
         self.optimizer.step()
         self.train_metrics['psnr'] = psnr(pred_imgs, ref_imgs, 1.0)
@@ -158,12 +162,7 @@ class ImgEnhanceModel(BaseModel):
         with torch.no_grad():
             pred_imgs = self.network(inp_imgs)
             
-            self.val_loss['mae'] = self.mae_loss_fn(pred_imgs, ref_imgs)
-            self.val_loss['ssim'] = self.ssim_loss_fn(pred_imgs, ref_imgs)
-            self.val_loss['psnr'] = self.psnr_loss_fn(pred_imgs, ref_imgs)
-            self.val_loss['total'] = self.lambda_mae * self.val_loss['mae'] + \
-                            self.lambda_ssim * self.val_loss['ssim'] +\
-                            self.lambda_psnr * self.val_loss['psnr']
+            self._calculate_loss(ref_imgs, pred_imgs, train=False)
             
             self.val_metrics['psnr'] = psnr(pred_imgs, ref_imgs, 1.0)
             self.val_metrics['ssim'] = ssim(pred_imgs, ref_imgs, 11).mean()
