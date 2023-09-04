@@ -90,3 +90,16 @@ def dice_loss(input: Tensor,
     dice_loss = torch.mean(dice_loss)
 
     return dice_loss
+
+
+class L1CharbonnierLoss(nn.Module):
+    """L1 Charbonnier loss."""
+    def __init__(self):
+        super(L1CharbonnierLoss, self).__init__()
+        self.eps = 1e-6
+
+    def forward(self, X, Y):
+        diff = X - Y
+        error = torch.sqrt(diff * diff + self.eps)
+        loss = torch.mean(error)
+        return loss
