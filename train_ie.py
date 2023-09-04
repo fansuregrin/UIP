@@ -35,6 +35,7 @@ parser.add_argument("--lambda_ssim", type=float, default=1.0, help="weight of SS
 parser.add_argument("--lambda_psnr", type=float, default=1.0, help="weight of PSNR loss")
 parser.add_argument("--val_interval", type=int, default=100, help="how many iterations to validate the model")
 parser.add_argument("--ckpt_interval", type=int, default=5, help="how many epochs to save checkpoint")
+parser.add_argument("--l1_reduction", type=str, default='mean')
 args = parser.parse_args()
 
 model_v = 'ie'
@@ -131,6 +132,7 @@ model_cfg = {
     'lambda_ssim': args.lambda_ssim,
     'lambda_psnr': args.lambda_psnr,
     'net_cfg': net_cfg,
+    'l1_reduction': args.l1_reduction,
 }
 model = create_model(model_v, model_cfg)
 
