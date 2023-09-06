@@ -62,10 +62,17 @@ def get_test_transform(width=256, height=256, process='resize'):
         get_size = A.RandomCrop(height, width)
     elif process == 'center_crop':
         get_size = A.CenterCrop(height, width)
+    elif process == 'none':
+        get_size = None
     else:
         assert f"'{process}' is not supported!"
-    transforms = A.Compose([
-        get_size,
-        ToTensorV2(),
-    ], additional_targets={'ref':'image'})
+    if get_size is None:
+        transforms = A.Compose([
+            ToTensorV2(),
+        ], additional_targets={'ref':'image'})
+    else:
+        transforms = A.Compose([
+            get_size,
+            ToTensorV2(),
+        ], additional_targets={'ref':'image'})
     return transforms
