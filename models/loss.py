@@ -103,3 +103,18 @@ class L1CharbonnierLoss(nn.Module):
         error = torch.sqrt(diff * diff + self.eps)
         loss = torch.mean(error)
         return loss
+
+class FourDomainLoss(nn.Module):
+    """"""
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, y_hat, y):
+        y_hat = torch.fft.rfft2(y_hat)
+        y = torch.fft.rfft2(y)
+        amp_y_hat = torch.abs(y_hat)
+        amp_y = torch.abs(y)
+        phase_y_hat = torch.angle(y_hat)
+        phase_y = torch.angle(y)
+
+        return amp_y - amp_y_hat + phase_y - phase_y_hat
