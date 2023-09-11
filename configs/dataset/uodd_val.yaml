@@ -1,0 +1,6 @@
+test:
+  type: 'single_img'
+  root_dir: '/DataA/pwz/workshop/Datasets/UODD/images/val'
+  width: none
+  height: none
+  preprocess: 'none'

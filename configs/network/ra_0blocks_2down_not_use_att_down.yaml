@@ -6,5 +6,5 @@ n_down: 2
 ngf: 64
 padding_type: reflect
 use_dropout: false
-use_att_down: true
+use_att_down: false
 use_att_up: false
