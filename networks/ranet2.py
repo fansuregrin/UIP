@@ -102,7 +102,7 @@ class RANet2(nn.Module):
         """
         """
         wrpm = []
-        if not padding_layer is None:
+        if (not padding_layer is None) and (padding_size>0):
             wrpm.append(padding_layer(padding_size))
         use_bias = (norm_layer is None)
         wrpm.append(
