@@ -117,4 +117,4 @@ class FourDomainLoss(nn.Module):
         phase_y_hat = torch.angle(y_hat)
         phase_y = torch.angle(y)
 
-        return torch.mean(amp_y - amp_y_hat + phase_y - phase_y_hat)
+        return F.l1_loss(amp_y_hat, amp_y) + F.l1_loss(phase_y_hat, phase_y)
