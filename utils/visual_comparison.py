@@ -99,3 +99,11 @@ def gen_comparison_with_local_mag(
 def get_random_img_names(img_dir, num):
     full_img_list = glob('*.jpg', root_dir=img_dir) + glob('*.png', root_dir=img_dir)
     return random.sample(full_img_list, num)
+
+
+def gen_random_area(img_w, img_h, area_w, area_h):
+    x1 = random.randint(0, img_w - area_w)
+    y1 = random.randint(0, img_h - area_h)
+    x2 = x1 + area_w
+    y2 = y1 + area_h
+    return (x1, y1, x2, y2)
