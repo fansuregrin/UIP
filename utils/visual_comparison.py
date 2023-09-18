@@ -2,6 +2,7 @@ import os
 import random
 import matplotlib.pyplot as plt
 import numpy as np
+import cv2
 from glob import glob
 from PIL import Image, ImageDraw
 from collections import OrderedDict
@@ -84,6 +85,61 @@ def gen_comparison_with_local_mag(
             img = np.asarray(img, dtype=np.uint8)
             local_mag = np.asarray(local_mag, dtype=np.uint8)
             full_img = np.concatenate((img, local_mag), 1)
+            ax = axes[i, j]
+            ax.axis('off')
+            if i == 0:
+                ax.set_title(label, **label_font)
+            ax.imshow(full_img)
+    fig.tight_layout()
+    if not save_fig:
+        fig.show()
+    if save_fig and os.path.exists(save_folder):
+        fig.savefig(os.path.join(save_folder, f"{save_name}.{save_fmt}"), format=save_fmt)
+
+
+def gen_comparison_with_local_edges(
+        img_name_list,
+        local_areas,
+        img_dirs,
+        font_size=28,
+        expected_size=(256, 256),
+        save_fig=False,
+        save_folder=None,
+        save_fmt='png',
+        save_name='comparison'):
+    num_rows = len(img_name_list)
+    num_cols = len(img_dirs)
+
+    fig, axes = plt.subplots(num_rows, num_cols, figsize=(num_cols*3*2, num_rows*3.5))
+
+    label_font = {
+        'fontfamily': 'Nimbus Roman',
+        'fontsize': font_size,
+    }
+
+    if not isinstance(img_dirs, OrderedDict):
+        img_dirs = OrderedDict(img_dirs)
+
+    for i in range(num_rows):
+        for j, label in enumerate(img_dirs):
+            img_fp = os.path.join(img_dirs[label], img_name_list[i])
+            img = Image.open(img_fp)
+            if img.size != expected_size:
+                img = img.resize(expected_size)
+            draw = ImageDraw.Draw(img)
+            local_mag = img.crop(local_areas[i])
+            draw.rectangle(local_areas[i], outline=(255,255,0))
+            img = np.asarray(img, dtype=np.uint8)
+            local_mag = np.asarray(local_mag, dtype=np.uint8)
+            local_mag = cv2.cvtColor(local_mag, cv2.COLOR_RGB2GRAY)
+            local_edges = cv2.Canny(local_mag, 100, 200)
+            local_edges = cv2.resize(local_edges, expected_size)
+            local_edges = cv2.cvtColor(local_edges, cv2.COLOR_GRAY2RGB)
+            local_edges = Image.fromarray(local_edges)
+            draw_local = ImageDraw.Draw(local_edges)
+            draw_local.rectangle(((0,0), local_edges.size), outline=(255,255,0), width=3)
+            local_edges = np.asarray(local_edges, dtype=np.uint8)
+            full_img = np.concatenate((img, local_edges), 1)
             ax = axes[i, j]
             ax.axis('off')
             if i == 0:
