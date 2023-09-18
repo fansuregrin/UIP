@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from torch import Tensor
 from torchvision.models import vgg19_bn, VGG19_BN_Weights
 from torchvision.models.feature_extraction import get_graph_node_names, create_feature_extractor
+from kornia.filters import canny
 
 
 class SemanticContentLoss(nn.Module):
@@ -118,3 +119,14 @@ class FourDomainLoss(nn.Module):
         phase_y = torch.angle(y)
 
         return F.l1_loss(amp_y_hat, amp_y) + F.l1_loss(phase_y_hat, phase_y)
+    
+
+class EdgeLoss(nn.Module):
+    """"""
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, y_hat, y):
+        _, y_hat_edges = canny(y_hat)
+        _, y_edges = canny(y)
+        return F.l1_loss(y_hat_edges, y_edges)
