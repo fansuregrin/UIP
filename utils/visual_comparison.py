@@ -191,6 +191,7 @@ def gen_comparison_with_local_edges2(
             local_mag_rgb = np.asarray(local_mag, dtype=np.uint8)
             local_mag_gray = cv2.cvtColor(local_mag_rgb, cv2.COLOR_RGB2GRAY)
 
+            local_mag = local_mag.resize(expected_size)
             draw_local_mag = ImageDraw.Draw(local_mag)
             draw_local_mag.rectangle(((0,0), local_mag.size), outline=outline_color, width=3)
             local_mag = np.asarray(local_mag, dtype=np.uint8)
