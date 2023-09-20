@@ -9,6 +9,8 @@ from kornia.color import rgb_to_ycbcr
 from tqdm import tqdm
 from glob import glob
 
+from utils.uciqe_uiqm import getUCIQE, getUIQM
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-re_dir', '--results_dir', type=str, default='results')
@@ -24,6 +26,8 @@ metrics = OrderedDict(
     niqe  = {'fn': niqe, 'val': 0.0},
     musiq = {'fn': musiq, 'val': 0.0},
     uranker = {'fn': uranker, 'val': 0.0},
+    uciqe = {'fn': getUCIQE, 'val':0.0},
+    uiqm = {'fn': getUIQM, 'val': 0.0},
 )
 
 results_dir = args.results_dir
@@ -43,6 +47,8 @@ for img_name in tqdm(img_name_list):
     for metric_name, metric in metrics.items():
         if metric_name == 'niqe':
             val = metric['fn'](rgb_to_ycbcr(img)).item()
+        elif metric_name == 'uciqe' or metric_name == 'uiqm':
+            val = metric['fn'](img_path)
         else:
             val = metric['fn'](img).item()
         metric['val'] += val
