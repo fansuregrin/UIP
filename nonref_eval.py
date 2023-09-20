@@ -8,9 +8,11 @@ from torchvision.transforms.functional import to_tensor
 from kornia.color import rgb_to_ycbcr
 from tqdm import tqdm
 
+from utils.uciqe_uiqm import getUCIQE, getUIQM
+
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--results_dir', type=str, default='results')
+parser.add_argument('-re_dir', '--results_dir', type=str, default='results')
 parser.add_argument('--model_v', type=str, default='ie')
 parser.add_argument('--net', type=str, default='ra')
 parser.add_argument('--name', type=str)
@@ -28,6 +30,8 @@ metrics = OrderedDict(
     niqe  = {'fn': niqe, 'val': 0.0},
     musiq = {'fn': musiq, 'val': 0.0},
     uranker = {'fn': uranker, 'val': 0.0},
+    uciqe = {'fn': getUCIQE, 'val':0.0},
+    uiqm = {'fn': getUIQM, 'val': 0.0},
 )
 
 if not isinstance(args.epochs, list):
@@ -51,6 +55,8 @@ for epoch in args.epochs:
         for metric_name, metric in metrics.items():
             if metric_name == 'niqe':
                 val = metric['fn'](rgb_to_ycbcr(img)).item()
+            elif metric_name == 'uciqe' or metric_name == 'uiqm':
+                val = metric['fn'](img_path)
             else:
                 val = metric['fn'](img).item()
             metric['val'] += val
