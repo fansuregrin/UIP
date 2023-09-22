@@ -37,6 +37,7 @@ if not os.path.exists(pred_imgs_dir):
     pred_imgs_dir = results_dir
 img_name_list = glob('*.png', root_dir=pred_imgs_dir)
 img_name_list.extend(glob('*.jpg', root_dir=pred_imgs_dir))
+img_name_list.sort()
 noref_f = open(os.path.join(results_dir, 'noref_eval.csv'), 'w')
 noref_f.write('img_name,{}\n'.format(','.join(metrics.keys())))
 for img_name in tqdm(img_name_list):

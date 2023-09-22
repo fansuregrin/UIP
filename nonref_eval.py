@@ -47,6 +47,7 @@ for epoch in args.epochs:
     noref_f = open(os.path.join(results_dir, 'noref_eval.csv'), 'w')
     noref_f.write('img_name,{}\n'.format(','.join(metrics.keys())))
     img_name_list = os.listdir(pred_imgs_dir)
+    img_name_list.sort()
     for img_name in tqdm(img_name_list):
         img_path = os.path.join(pred_imgs_dir, img_name)
         img = to_tensor(Image.open(img_path)).unsqueeze(0)
