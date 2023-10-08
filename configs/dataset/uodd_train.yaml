@@ -1,6 +1,6 @@
 test:
   type: 'single_img'
-  root_dir: '/DataA/pwz/workshop/Datasets/UODD/images/train'
+  root_dir: '/DataA/pwz/workshop/Datasets/UODD.raw/images/train'
   width: none
   height: none
   preprocess: 'none'
