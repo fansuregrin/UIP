@@ -1,6 +1,6 @@
 test:
   type: 'single_img'
-  root_dir: '/DataA/pwz/workshop/Datasets/color_checker7'
-  width: none
-  height: none
-  preprocess: 'none'
+  root_dir: '/DataA/pwz/workshop/Datasets/color_checker7/inp'
+  width: 800
+  height: 600
+  preprocess: 'resize'
