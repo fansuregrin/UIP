@@ -25,16 +25,16 @@ name=${3}
 epoch=${4}
 
 echo -e "reference eval of [${GREEN}${model_v}/${net}/${name}/epoch_${epoch}${ENDSTYLE}]"
-echo "================================="
-echo -e "${BOLD}epoch\tds_name\tpsnr\tssim${ENDSTYLE}"
-echo "---------------------------------"
+echo "========================================"
+printf "${BOLD}%-8s %-15s %-8s %-8s${ENDSTYLE}\n" epoch ds_name psnr ssim
+echo "----------------------------------------"
 for ds_name in ${!refer_dict[@]}
 do
-    target_file="results/${model_v}/${net}/${name}/${ds_name}/epoch_${epoch}/quantitive_eval.csv"
+    target_file="results/${model_v}/${net}/${name}/${ds_name}/epoch_${epoch}/ref_eval.csv"
     if [ -f "${target_file}" ]; then
         psnr=`tail "${target_file}" -n 1 | awk -F, '{print $2}'`
         ssim=`tail "${target_file}" -n 1 | awk -F, '{print $3}'`
-        echo -e "${epoch}\t${ds_name}\t${psnr}\t${ssim}"
+        printf "%-8s %-15s %-8s %-8s\n" ${epoch} ${ds_name} ${psnr} ${ssim}
     fi
 done
-echo "================================="
+echo "========================================"

@@ -20,22 +20,6 @@ net=${2}
 name=${3}
 epoch=${4}
 
-for ds_name in ${ds_names[@]}
-do
-    target_dir="results/${model_v}/${net}/${name}/${ds_name}/epoch_${epoch}"
-    if [ -d ${target_dir} ]
-    then
-        python ./nonref_eval.py \
-            --model_v ${model_v} \
-            --net ${net} \
-            --name ${name} \
-            --ds_name ${ds_name} \
-            --epochs ${epoch}
-    else
-        echo -e "${RED}[${target_dir}]${ENDSTYLE} not exist!"
-    fi
-done
-
 echo -e "non-reference eval of [${GREEN}${model_v}/${net}/${name}/epoch_${epoch}${ENDSTYLE}]"
 echo "=================================================================="
 printf "${BOLD}%-8s %-15s %-8s %-8s %-8s %-8s %-8s${ENDSTYLE}\n" epoch ds_name niqe musiq uranker uciqe uiqm
