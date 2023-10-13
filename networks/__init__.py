@@ -3,6 +3,7 @@ from typing import Dict, Any
 from .color_enhance import ColorEnhancementNet
 from .ranet import RANet
 from .ranet2 import RANet2
+from .ranet3 import RANet3
 from .ege_unet import EGEUNet
 from .fcn import FCN
 from .unet import UNet
@@ -25,6 +26,20 @@ def create_network(cfg: Dict[str, Any]):
         )
     elif name == 'ra2':
         net = RANet2(
+            cfg['input_nc'], cfg['output_nc'],
+            cfg['n_blocks'], cfg['n_down'],
+            ngf = cfg['ngf'],
+            wrpm_kernel_size = cfg['wrpm_kernel_size'],
+            wrpm_padding_size = cfg['wrpm_padding_size'],
+            fmsm_kernel_size = cfg['fmsm_kernel_size'],
+            fmsm_padding_size = cfg['fmsm_padding_size'],
+            padding_type = cfg['padding_type'],
+            use_dropout = cfg['use_dropout'],
+            use_att_down = cfg['use_att_down'],
+            use_att_up = cfg['use_att_up']
+        )
+    elif name == 'ra3':
+        net = RANet3(
             cfg['input_nc'], cfg['output_nc'],
             cfg['n_blocks'], cfg['n_down'],
             ngf = cfg['ngf'],
