@@ -10,6 +10,7 @@ Loss Functions:
 - MAE(L1) Loss
 - PSNR Loss
 - SSIM Loss
+    $$ \mathcal{L}_{SSIM} = \frac{1 - SSIM\left(\mathbf{\hat{Y}}, \mathbf{Y}\right)}{2} $$
 
 #### 2.ImgEnhanceModel2
 
@@ -25,6 +26,8 @@ Loss Functions:
 - PSNR Loss
 - SSIM Loss
 - Fourier Domain Loss
+    
+    $$ \mathcal{L}_{Four} = {\ell}_{1}(amp(\mathbf{\hat{Y}}), amp(\mathbf{Y})) + {\ell}_{1}(pha(\mathbf{\hat{Y}}), pha(\mathbf{Y})) $$
 
 #### 4.ImgEnhanceModel4
 
@@ -33,16 +36,20 @@ Loss Functions:
 - PSNR Loss
 - SSIM Loss
 - Fourier Domain Loss
+    $$ \mathcal{L}_{Four} = {\ell}_{1}(amp(\mathbf{\hat{Y}}), amp(\mathbf{Y})) + {\ell}_{1}(pha(\mathbf{\hat{Y}}), pha(\mathbf{Y})) $$
 - Edge Detection Loss
+    $$ \mathcal{L}_{Edge} = {\ell}_{1}(Canny(\mathbf{\hat{Y}}), Canny(\mathbf{Y})) $$
 
-#### 4.ImgEnhanceModel5
+#### 5.ImgEnhanceModel5
 
 Loss Functions:
 - MAE(L1) Loss
 - PSNR Loss
 - SSIM Loss
 - Fourier Domain Loss
+    $$ \mathcal{L}_{Four} = {\ell}_{1}(fft(\mathbf{\hat{Y}}), fft(\mathbf{Y})) $$
 - Edge Detection Loss
+    $$ \mathcal{L}_{Edge} = {\ell}_{1}(Canny(\mathbf{\hat{Y}}), Canny(\mathbf{Y})) $$
 
 ### Networks
 
