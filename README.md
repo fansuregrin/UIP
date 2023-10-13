@@ -10,7 +10,9 @@ Loss Functions:
 - MAE(L1) Loss
 - PSNR Loss
 - SSIM Loss
-    $$ \mathcal{L}_{SSIM} = \frac{1 - SSIM\left(\mathbf{\hat{Y}}, \mathbf{Y}\right)}{2} $$
+    ```math
+    \mathcal{L}_{SSIM} = \frac{1 - SSIM\left(\mathbf{\hat{Y}}, \mathbf{Y}\right)}{2}
+    ```
 
 #### 2.ImgEnhanceModel2
 
