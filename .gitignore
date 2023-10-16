@@ -6,3 +6,4 @@ samples/
 results/
 *.ipynb
 test_code.py
+figures/
