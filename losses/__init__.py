@@ -6,3 +6,4 @@ from .loss import (
     FourDomainLoss2,
     EdgeLoss
 )
+from .s3im import S3IM
