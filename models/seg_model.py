@@ -11,7 +11,7 @@ from torchvision.utils import draw_segmentation_masks
 from typing import Dict
 
 from .base_model import BaseModel
-from .loss import DiceLoss
+from losses import DiceLoss
 
 
 class SegModel(BaseModel):

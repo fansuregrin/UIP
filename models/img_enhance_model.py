@@ -19,7 +19,7 @@ import cv2
 import shutil
 
 from .base_model import BaseModel
-from .loss import L1CharbonnierLoss, FourDomainLoss, EdgeLoss, FourDomainLoss2
+from losses import L1CharbonnierLoss, FourDomainLoss, EdgeLoss, FourDomainLoss2
 
 
 class ImgEnhanceModel(BaseModel):
