@@ -240,26 +240,20 @@ def create_test_dataset(name, config):
 def create_train_dataloader(dataset, config):
     train_dl = DataLoader(
         dataset,
-        batch_size = config['batch_size'],
-        shuffle = config['shuffle'], 
-        num_workers = config['num_workers']
+        **config
     )
     return train_dl
 
 def create_val_dataloader(dataset, config):
     val_dl = DataLoader(
         dataset,
-        batch_size = config['batch_size'],
-        shuffle = config['shuffle'],
-        num_workers = config['num_workers']
+        **config
     )
     return val_dl
 
 def create_test_dataloader(dataset, config):
     test_dl = DataLoader(
         dataset,
-        batch_size = config['batch_size'],
-        shuffle = config['shuffle'],
-        num_workers = config['num_workers']
+        **config
     )
     return test_dl
