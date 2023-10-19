@@ -1,7 +1,7 @@
 from .img_enhance_model import (
     ImgEnhanceModel, ImgEnhanceModel2,
     ImgEnhanceModel3, ImgEnhanceModel4,
-    ImgEnhanceModel5
+    ImgEnhanceModel5, ImgEnhanceModel6
 )
 from .seg_model import SegModel
 
@@ -17,6 +17,8 @@ def create_model(name, cfg):
         model = ImgEnhanceModel4(cfg)
     elif name == 'ie5':
         model = ImgEnhanceModel5(cfg)
+    elif name == 'ie6':
+        model = ImgEnhanceModel6(cfg)
     elif name == 'seg':
         model = SegModel(cfg)
     else:

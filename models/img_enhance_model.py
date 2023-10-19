@@ -19,7 +19,11 @@ import cv2
 import shutil
 
 from .base_model import BaseModel
-from losses import L1CharbonnierLoss, FourDomainLoss, EdgeLoss, FourDomainLoss2
+from losses import (
+    L1CharbonnierLoss, FourDomainLoss, 
+    EdgeLoss, FourDomainLoss2,
+    S3IM
+)
 
 
 class ImgEnhanceModel(BaseModel):
@@ -338,3 +342,27 @@ class ImgEnhanceModel5(ImgEnhanceModel):
             self.lambda_psnr * loss['psnr'] +\
             self.lambda_four * loss['four'] +\
             self.lambda_edge * loss['edge']
+        
+
+class ImgEnhanceModel6(ImgEnhanceModel):
+    def _set_loss_fn(self):
+        self.mae_loss_fn = nn.L1Loss(reduction=self.cfg['l1_reduction']).to(self.device)
+        self.s3im_loss_fn = S3IM(
+            repeat_time=self.cfg['repeat_time'],
+            patch_height=self.cfg['patch_height'],
+            patch_width=self.cfg['patch_width']
+        ).to(self.device).to(self.device)
+        self.four_loss_fn = FourDomainLoss2().to(self.device)
+        self.lambda_mae  = self.cfg['lambda_mae']
+        self.lambda_s3im = self.cfg['lambda_s3im']
+        self.lambda_four = self.cfg['lambda_four']
+    
+    def _calculate_loss(self, ref_imgs, pred_imgs, train=True):
+        loss = self.train_loss if train else self.val_loss
+        loss['mae'] = self.mae_loss_fn(pred_imgs, ref_imgs)
+        n = len(pred_imgs)
+        loss['s3im'] = self.s3im_loss_fn(pred_imgs.view(n, -1), ref_imgs.view(n, -1))
+        loss['four'] = self.four_loss_fn(pred_imgs, ref_imgs)
+        loss['total'] = self.lambda_mae * loss['mae'] + \
+            self.lambda_s3im * loss['s3im'] +\
+            self.lambda_four * loss['four']
