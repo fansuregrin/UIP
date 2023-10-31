@@ -151,8 +151,8 @@ class RANet3(nn.Module):
         """Up-sampling Block.
 
         Args:
-            in_channels: Number of channels of input tensor.
-            out_channels: Number of channels of output tensor.
+            in_channels: Number of channels of input features.
+            out_channels: Number of channels of output features.
             use_att: Whether to use attention.
             use_dropout: Whether to use dropout.
             dropout_rate: Probability of dropout layer.

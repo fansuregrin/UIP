@@ -31,6 +31,10 @@ class RANet2(nn.Module):
             n_blocks: Number of residual blocks.
             n_down: Number of down-sampling blocks.
             ngf: Number of kernels of Conv2d layer in `WRPM`.
+            wrpm_kernel_size: kernel size of conv in `WRPM`.
+            wrpm_padding_size: padding size in `WRPM`.
+            fmsm_kernel_size: kernel size of conv in `FMSM`.
+            fmsm_padding_size: padding size in `FMSM`.
             padding_type: Type of padding layer in Residual Block.
             use_dropout: Whether to use dropout.
             use_att_down: Whether to use attention block in down-sampling.
@@ -99,7 +103,7 @@ class RANet2(nn.Module):
                      norm_layer: Union[None, nn.Module] = None,
                      padding_layer: Union[None, nn.Module] = None,
                      padding_size: int = 3) -> nn.Module:
-        """
+        """Create Wide Range Perception Module.
         """
         wrpm = []
         if (not padding_layer is None) and (padding_size>0):
@@ -140,8 +144,8 @@ class RANet2(nn.Module):
         """Up-sampling Block.
 
         Args:
-            in_channels: Number of channels of input tensor.
-            out_channels: Number of channels of output tensor.
+            in_channels: Number of channels of input features.
+            out_channels: Number of channels of output features.
             use_att: Whether to use attention.
             use_dropout: Whether to use dropout.
             dropout_rate: Probability of dropout layer.

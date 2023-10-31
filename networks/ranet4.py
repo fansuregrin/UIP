@@ -136,8 +136,8 @@ class RANet4(nn.Module):
         """Attention Down-sampling Block.
 
         Args:
-            in_channels: Number of channels of input tensor.
-            out_channels: Number of channels of output tensor.
+            in_channels: Number of channels of input features.
+            out_channels: Number of channels of output features.
             norm_layer: Type of Normalization layer.
             use_att: Whether to use attention.
             use_dropout: Whether to use dropout.
