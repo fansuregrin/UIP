@@ -3,6 +3,7 @@ import random
 import matplotlib.pyplot as plt
 import numpy as np
 import cv2
+import math
 from glob import glob
 from PIL import Image, ImageDraw
 from collections import OrderedDict
@@ -55,6 +56,7 @@ def gen_comparison_with_local_mag(
         font_size=28,
         expected_size=(256, 256),
         outline_color=(255,255,0),
+        outline_width=3,
         save_fig=False,
         save_folder=None,
         save_fmt='png',
@@ -80,7 +82,7 @@ def gen_comparison_with_local_mag(
                 img = img.resize(expected_size)
             draw = ImageDraw.Draw(img)
             local_mag = img.crop(local_areas[i]).resize(expected_size)
-            draw.rectangle(local_areas[i], outline=outline_color)
+            draw.rectangle(local_areas[i], outline=outline_color, width=outline_width)
             draw_local = ImageDraw.Draw(local_mag)
             draw_local.rectangle(((0,0), local_mag.size), outline=outline_color, width=3)
             img = np.asarray(img, dtype=np.uint8)
@@ -98,6 +100,58 @@ def gen_comparison_with_local_mag(
         fig.savefig(os.path.join(save_folder, f"{save_name}.{save_fmt}"), format=save_fmt)
 
 
+def gen_comparison_with_local_mag2(
+        img_name,
+        local_area,
+        img_dirs,
+        font_size=28,
+        expected_size=(256, 256),
+        outline_color=(255,255,0),
+        outline_width=3,
+        save_fig=False,
+        save_folder=None,
+        save_fmt='png',
+        save_name='comparison'):
+    num = len(img_dirs)
+    num_rows = math.floor(math.sqrt(num))
+    num_cols = math.ceil(num/num_rows)
+
+    fig, axes = plt.subplots(num_rows, num_cols, figsize=(num_cols*3*2, num_rows*3.5))
+
+    label_font = {
+        'fontfamily': 'Nimbus Roman',
+        'fontsize': font_size,
+    }
+
+    if not isinstance(img_dirs, OrderedDict):
+        img_dirs = OrderedDict(img_dirs)
+
+    axes = axes.flatten()
+    for ax in axes:
+        ax.axis('off')
+    for i,label in enumerate(img_dirs.keys()): 
+            img_fp = os.path.join(img_dirs[label], img_name)
+            img = Image.open(img_fp)
+            if img.size != expected_size:
+                img = img.resize(expected_size)
+            draw = ImageDraw.Draw(img)
+            local_mag = img.crop(local_area).resize(expected_size)
+            draw.rectangle(local_area, outline=outline_color, width=outline_width)
+            draw_local = ImageDraw.Draw(local_mag)
+            draw_local.rectangle(((0,0), local_mag.size), outline=outline_color, width=3)
+            img = np.asarray(img, dtype=np.uint8)
+            local_mag = np.asarray(local_mag, dtype=np.uint8)
+            full_img = np.concatenate((img, local_mag), 1)
+            ax = axes[i]
+            ax.set_title(label, **label_font)
+            ax.imshow(full_img)
+    fig.tight_layout()
+    if not save_fig:
+        fig.show()
+    if save_fig and os.path.exists(save_folder):
+        fig.savefig(os.path.join(save_folder, f"{save_name}.{save_fmt}"), format=save_fmt)
+
+
 def gen_comparison_with_local_edges(
         img_name_list,
         local_areas,
@@ -105,6 +159,7 @@ def gen_comparison_with_local_edges(
         font_size=28,
         expected_size=(256, 256),
         outline_color=(255,255,0),
+        outline_width=3,
         save_fig=False,
         save_folder=None,
         save_fmt='png',
@@ -130,7 +185,7 @@ def gen_comparison_with_local_edges(
                 img = img.resize(expected_size)
             draw = ImageDraw.Draw(img)
             local_mag = img.crop(local_areas[i])
-            draw.rectangle(local_areas[i], outline=outline_color)
+            draw.rectangle(local_areas[i], outline=outline_color, width=outline_width)
             img = np.asarray(img, dtype=np.uint8)
             local_mag = np.asarray(local_mag, dtype=np.uint8)
             local_mag = cv2.cvtColor(local_mag, cv2.COLOR_RGB2GRAY)
@@ -161,6 +216,7 @@ def gen_comparison_with_local_edges2(
         font_size=28,
         expected_size=(256, 256),
         outline_color=(255,255,0),
+        outline_width=3,
         save_fig=False,
         save_folder=None,
         save_fmt='png',
@@ -186,7 +242,7 @@ def gen_comparison_with_local_edges2(
                 img = img.resize(expected_size)
             draw = ImageDraw.Draw(img)
             local_mag = img.crop(local_areas[i])
-            draw.rectangle(local_areas[i], outline=outline_color)
+            draw.rectangle(local_areas[i], outline=outline_color, width=outline_width)
             img = np.asarray(img, dtype=np.uint8)
             local_mag_rgb = np.asarray(local_mag, dtype=np.uint8)
             local_mag_gray = cv2.cvtColor(local_mag_rgb, cv2.COLOR_RGB2GRAY)
