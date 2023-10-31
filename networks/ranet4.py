@@ -31,8 +31,13 @@ class RANet4(nn.Module):
             input_nc: Number of channels of input images.
             output_nc: Number of chnnels of output images.
             n_blocks: Number of residual blocks.
+            n_blocks_wfef: Number of wave features extraction and fusion blocks.
             n_down: Number of down-sampling blocks.
             ngf: Number of kernels of Conv2d layer in `WRPM`.
+            wrpm_kernel_size: kernel size of conv in `WRPM`.
+            wrpm_padding_size: padding size in `WRPM`.
+            fmsm_kernel_size: kernel size of conv in `FMSM`.
+            fmsm_padding_size: padding size in `FMSM`.
             padding_type: Type of padding layer in Residual Block.
             use_dropout: Whether to use dropout.
             use_att_down: Whether to use attention block in down-sampling.
@@ -106,7 +111,7 @@ class RANet4(nn.Module):
                      norm_layer: Union[None, nn.Module] = None,
                      padding_layer: Union[None, nn.Module] = None,
                      padding_size: int = 3) -> nn.Module:
-        """
+        """Create Wide Range Perception Module.
         """
         wrpm = []
         if (not padding_layer is None) and (padding_size>0):
@@ -121,7 +126,13 @@ class RANet4(nn.Module):
 
         return nn.Sequential(*wrpm)
 
-    def _down(self, in_channels, out_channels, norm_layer=None, use_att=True, use_dropout=False, dropout_rate=0.5):
+    def _down(self,
+              in_channels,
+              out_channels,
+              norm_layer=None,
+              use_att=True,
+              use_dropout=False,
+              dropout_rate=0.5):
         """Attention Down-sampling Block.
 
         Args:
