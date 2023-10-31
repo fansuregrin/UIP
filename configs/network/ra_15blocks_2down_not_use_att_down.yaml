@@ -1,0 +1,10 @@
+name: ra
+input_nc: 3
+output_nc: 3
+n_blocks: 15
+n_down: 2
+ngf: 64
+padding_type: reflect
+use_dropout: false
+use_att_down: false
+use_att_up: false

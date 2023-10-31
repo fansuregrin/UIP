@@ -1,0 +1,15 @@
+name: ra4
+input_nc: 3
+output_nc: 3
+n_blocks_res: 9
+n_blocks_wfef: 2
+n_down: 2
+ngf: 64
+wrpm_kernel_size: 7
+wrpm_padding_size: 3
+fmsm_kernel_size: 7
+fmsm_padding_size: 3
+padding_type: reflect
+use_dropout: false
+use_att_down: true
+use_att_up: false
