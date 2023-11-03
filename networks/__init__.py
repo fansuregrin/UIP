@@ -10,6 +10,7 @@ from .ege_unet import EGEUNet
 from .fcn import FCN
 from .unet import UNet
 from .four_net import FourNet
+from .mimo_unet import MIMOUNet
 
 
 def create_network(cfg: Dict[str, Any]):
@@ -83,6 +84,10 @@ def create_network(cfg: Dict[str, Any]):
             use_wfef_down = cfg['use_wfef_down'],
             use_att_up = cfg['use_att_up'],
             use_wfef_up = cfg['use_wfef_up']
+        )
+    elif name == 'mimounet':
+        net = MIMOUNet(
+            num_res = cfg['num_res']
         )
     elif name == 'fcn':
         net = FCN(
