@@ -5,6 +5,7 @@ from .ranet import RANet
 from .ranet2 import RANet2
 from .ranet3 import RANet3
 from .ranet4 import RANet4
+from .ranet5 import RANet5
 from .ege_unet import EGEUNet
 from .fcn import FCN
 from .unet import UNet
@@ -66,6 +67,22 @@ def create_network(cfg: Dict[str, Any]):
             use_dropout = cfg['use_dropout'],
             use_att_down = cfg['use_att_down'],
             use_att_up = cfg['use_att_up']
+        )
+    elif name == 'ra5':
+        net = RANet5(
+            cfg['input_nc'], cfg['output_nc'],
+            cfg['n_blocks_res'], cfg['n_down'],
+            ngf = cfg['ngf'],
+            wrpm_kernel_size = cfg['wrpm_kernel_size'],
+            wrpm_padding_size = cfg['wrpm_padding_size'],
+            fmsm_kernel_size = cfg['fmsm_kernel_size'],
+            fmsm_padding_size = cfg['fmsm_padding_size'],
+            padding_type = cfg['padding_type'],
+            use_dropout = cfg['use_dropout'],
+            use_att_down = cfg['use_att_down'],
+            use_wfef_down = cfg['use_wfef_down'],
+            use_att_up = cfg['use_att_up'],
+            use_wfef_up = cfg['use_wfef_up']
         )
     elif name == 'fcn':
         net = FCN(
