@@ -182,20 +182,20 @@ class MIMOUNet(nn.Module):
         z = self.Decoder[0](z)
         z_ = self.ConvsOut[0](z)
         z = self.feat_extract[3](z)
-        outputs[0.25] = z_+x_4
+        outputs[0.25] = torch.sigmoid(z_+x_4)
 
         z = torch.cat([z, res2], dim=1)
         z = self.Convs[0](z)
         z = self.Decoder[1](z)
         z_ = self.ConvsOut[1](z)
         z = self.feat_extract[4](z)
-        outputs[0.5] = z_+x_2
+        outputs[0.5] = torch.sigmoid(z_+x_2)
 
         z = torch.cat([z, res1], dim=1)
         z = self.Convs[1](z)
         z = self.Decoder[2](z)
         z = self.feat_extract[5](z)
-        outputs[1] = z+x
+        outputs[1] = torch.sigmoid(z+x)
 
         return outputs
 
