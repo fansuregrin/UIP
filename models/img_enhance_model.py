@@ -1,6 +1,7 @@
 import torch
 import torch.optim as optim
 import torch.nn as nn
+import torch.nn.functional as F
 import os
 import numpy as np
 import time
@@ -90,6 +91,11 @@ class ImgEnhanceModel(BaseModel):
         loss['total'] = self.lambda_mae * loss['mae'] + \
             self.lambda_ssim * loss['ssim'] +\
             self.lambda_psnr * loss['psnr']
+        
+    def _calculate_metrics(self, ref_imgs, pred_imgs, train=True):
+        metrics = self.train_metrics if train else self.val_metrics
+        metrics['psnr'] = psnr(pred_imgs, ref_imgs, 1.0)
+        metrics['ssim'] = ssim(pred_imgs, ref_imgs, 11).mean()
 
     def train(self, train_dl: DataLoader, val_dl: DataLoader):
         assert self.mode == 'train', f"The mode must be 'train', but got {self.mode}"
@@ -131,8 +137,7 @@ class ImgEnhanceModel(BaseModel):
         self._calculate_loss(ref_imgs, pred_imgs)
         self.train_loss['total'].backward()
         self.optimizer.step()
-        self.train_metrics['psnr'] = psnr(pred_imgs, ref_imgs, 1.0)
-        self.train_metrics['ssim'] = ssim(pred_imgs, ref_imgs, 11).mean()
+        self._calculate_metrics(ref_imgs, pred_imgs)
     
     def adjust_lr(self):
         if self.lr_scheduler is not None:
@@ -168,8 +173,7 @@ class ImgEnhanceModel(BaseModel):
             
             self._calculate_loss(ref_imgs, pred_imgs, train=False)
             
-            self.val_metrics['psnr'] = psnr(pred_imgs, ref_imgs, 1.0)
-            self.val_metrics['ssim'] = ssim(pred_imgs, ref_imgs, 11).mean()
+            self._calculate_metrics(ref_imgs, pred_imgs, train=False)
 
             full_img = self._gen_comparison_img(inp_imgs, pred_imgs, ref_imgs)
             full_img = cv2.cvtColor(full_img, cv2.COLOR_RGB2BGR)
@@ -365,3 +369,48 @@ class ImgEnhanceModel6(ImgEnhanceModel):
         loss['total'] = self.lambda_mae * loss['mae'] + \
             self.lambda_s3im * loss['s3im'] +\
             self.lambda_four * loss['four']
+        
+
+class ImgEnhanceModel7(ImgEnhanceModel):
+    def _set_loss_fn(self):
+        self.mae_loss_fn = nn.L1Loss(reduction=self.cfg['l1_reduction']).to(self.device)
+        self.ssim_loss_fn = SSIMLoss(11).to(self.device)
+        self.four_loss_fn = FourDomainLoss2().to(self.device)
+        self.lambda_mae  = self.cfg['lambda_mae']
+        self.lambda_ssim = self.cfg['lambda_ssim']
+        self.lambda_four = self.cfg['lambda_four']
+    
+    def _calculate_loss(self, ref_imgs, pred_imgs, train=True):
+        loss = self.train_loss if train else self.val_loss
+        ref_imgs_dict = dict()
+        scales = list(pred_imgs.keys())
+        for scale in scales:
+            if scale == 1:
+                ref_imgs_dict[1] = ref_imgs
+            else:
+                ref_imgs_dict[scale] = F.interpolate(ref_imgs, scale_factor=scale, mode='bilinear')
+        loss['mae'] = sum(self.mae_loss_fn(pred_imgs[scale], ref_imgs_dict[scale]) for scale in scales)
+        loss['ssim'] = sum(self.ssim_loss_fn(pred_imgs[scale], ref_imgs_dict[scale]) for scale in scales)
+        loss['four'] = sum(self.four_loss_fn(pred_imgs[scale], ref_imgs_dict[scale]) for scale in scales)
+        loss['total'] = self.lambda_mae * loss['mae'] + \
+            self.lambda_ssim * loss['ssim'] +\
+            self.lambda_four * loss['four']
+        
+    def _calculate_metrics(self, ref_imgs, pred_imgs, train=True):
+        metrics = self.train_metrics if train else self.val_metrics
+        metrics['psnr'] = psnr(pred_imgs[1], ref_imgs, 1.0)
+        metrics['ssim'] = ssim(pred_imgs[1], ref_imgs, 11).mean()
+        
+    def _gen_comparison_img(self, inp_imgs: Tensor, pred_imgs: Dict[float, Tensor], ref_imgs: Union[Tensor, None]=None):
+        inp_imgs = torch.cat([t for t in inp_imgs], dim=2)
+        pred_imgs = torch.cat([t for t in pred_imgs[1]], dim=2)
+        inp_imgs = (inp_imgs.cpu().numpy().transpose(1,2,0) * 255).astype(np.uint8)
+        pred_imgs = (pred_imgs.cpu().numpy().transpose(1,2,0) * 255).astype(np.uint8)
+        if not ref_imgs is None:
+            ref_imgs = torch.cat([t for t in ref_imgs], dim=2)
+            ref_imgs = (ref_imgs.cpu().numpy().transpose(1,2,0) * 255).astype(np.uint8)      
+            full_img = np.concatenate((inp_imgs, pred_imgs, ref_imgs), axis=0)
+        else:
+            full_img = np.concatenate((inp_imgs, pred_imgs), axis=0)
+
+        return full_img
