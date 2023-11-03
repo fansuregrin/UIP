@@ -45,7 +45,6 @@ class ImgEnhanceModel(BaseModel):
         elif self.mode == 'test':
             self.checkpoint_dir = cfg['checkpoint_dir']
             self.result_dir = cfg['result_dir']
-            self.niqe = pyiqa.create_metric('niqe', device=self.device)
         
     def load_weights(self, weights_path: str):
         weights_path = os.path.join(self.checkpoint_dir, weights_path)
