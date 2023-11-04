@@ -414,3 +414,60 @@ class ImgEnhanceModel7(ImgEnhanceModel):
             full_img = np.concatenate((inp_imgs, pred_imgs), axis=0)
 
         return full_img
+    
+    def test(self, test_dl: DataLoader, epoch: int, test_name: str):
+        assert self.mode == 'test', f"The mode must be 'test', but got {self.mode}"
+        
+        result_dir = os.path.join(self.result_dir, test_name, f"epoch_{epoch}")
+        if os.path.exists(result_dir):
+            shutil.rmtree(result_dir)
+        os.makedirs(result_dir)
+        os.makedirs(os.path.join(result_dir, 'paired'))
+        os.makedirs(os.path.join(result_dir, 'single/input'))
+        os.makedirs(os.path.join(result_dir, 'single/predicted'))
+
+        t_elapse_list = []
+        idx = 1
+        for batch in tqdm(test_dl):
+            inp_imgs = batch['inp'].to(self.device)
+            ref_imgs = batch['ref'].to(self.device) if 'ref' in batch else None
+            img_names = batch['img_name']
+            num = len(inp_imgs)
+            with torch.no_grad():
+                self.network.eval()
+                t_start = time.time()
+                pred_imgs = self.network(inp_imgs)
+                
+                # average inference time consumed by one batch
+                t_elapse_avg = (time.time() - t_start) / num
+                t_elapse_list.append(t_elapse_avg)
+
+                # record visual results and metrics values
+                full_img = self._gen_comparison_img(inp_imgs, pred_imgs, ref_imgs)
+                full_img = cv2.cvtColor(full_img, cv2.COLOR_RGB2BGR)
+                cv2.imwrite(os.path.join(result_dir, 'paired', f'{idx:06d}.png'), full_img)
+                with open(os.path.join(result_dir, 'paired', f"{idx:06d}.txt"), 'w') as f:
+                    f.write('\n'.join(img_names))
+                if not ref_imgs is None:
+                    for (img_name, inp_img, pred_img, ref_img) in zip(
+                        img_names, inp_imgs, pred_imgs[1], ref_imgs):
+                        save_image(inp_img.data,
+                                os.path.join(result_dir, 'single/input', img_name))
+                        save_image(pred_img.data,
+                                os.path.join(result_dir, 'single/predicted', img_name))
+                else:
+                    for (img_name, inp_img, pred_img) in zip(
+                        img_names, inp_imgs, pred_imgs[1]):
+                        save_image(inp_img.data,
+                                os.path.join(result_dir, 'single/input', img_name))
+                        save_image(pred_img.data,
+                                os.path.join(result_dir, 'single/predicted', img_name))
+            idx += 1
+
+        frame_rate = 1 / (sum(t_elapse_list) / len(t_elapse_list))
+        if self.logger:
+            self.logger.info(
+                '[epoch: {:d}] [framte_rate: {:.1f} fps]'.format(
+                    epoch, frame_rate
+                )
+            )
