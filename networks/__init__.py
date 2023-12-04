@@ -11,6 +11,7 @@ from .fcn import FCN
 from .unet import UNet
 from .four_net import FourNet
 from .mimo_unet import MIMOUNet
+from .mimo_swinT_unet import MIMOSwinTUNet
 
 
 def create_network(cfg: Dict[str, Any]):
@@ -87,6 +88,11 @@ def create_network(cfg: Dict[str, Any]):
         )
     elif name == 'mimounet':
         net = MIMOUNet(
+            num_res = cfg['num_res']
+        )
+    elif name == 'mimo_swinT_unet':
+        net = MIMOSwinTUNet(
+            img_size = cfg['img_size'],
             num_res = cfg['num_res']
         )
     elif name == 'fcn':
