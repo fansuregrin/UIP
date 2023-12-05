@@ -132,6 +132,20 @@ class FourDomainLoss2(nn.Module):
         return F.l1_loss(y_hat, y)
     
 
+class FourDomainLoss3(nn.Module):
+    """"""
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, y_hat, y):
+        y_hat = torch.fft.rfft2(y_hat)
+        y = torch.fft.rfft2(y)
+        amp_y_hat = torch.abs(y_hat)
+        amp_y = torch.abs(y)
+
+        return F.l1_loss(amp_y_hat, amp_y)
+    
+
 class EdgeLoss(nn.Module):
     """"""
     def __init__(self):
