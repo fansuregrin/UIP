@@ -22,7 +22,7 @@ import shutil
 from .base_model import BaseModel
 from losses import (
     L1CharbonnierLoss, FourDomainLoss, 
-    EdgeLoss, FourDomainLoss2,
+    EdgeLoss, FourDomainLoss2, FourDomainLoss3,
     S3IM
 )
 
@@ -298,7 +298,7 @@ class ImgEnhanceModel4(ImgEnhanceModel):
         self.mae_loss_fn = nn.L1Loss(reduction=self.cfg['l1_reduction']).to(self.device)
         self.ssim_loss_fn = SSIMLoss(11).to(self.device)
         self.psnr_loss_fn = PSNRLoss(1.0).to(self.device)
-        self.four_loss_fn = FourDomainLoss().to(self.device)
+        self.four_loss_fn = FourDomainLoss3().to(self.device)
         self.edge_loss_fn = EdgeLoss().to(self.device)
         self.lambda_mae  = self.cfg['lambda_mae']
         self.lambda_ssim = self.cfg['lambda_ssim']
