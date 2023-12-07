@@ -91,7 +91,7 @@ class FAM(nn.Module):
 
 
 class MIMOSwinTUNet(nn.Module):
-    def __init__(self, img_size=256, num_res=8):
+    def __init__(self, img_size=256, num_res=8, num_swinT=4):
         super().__init__()
 
         base_channel = 32
@@ -142,9 +142,18 @@ class MIMOSwinTUNet(nn.Module):
             PatchEmbed(img_size=img_size//4, patch_size=self.patch_sizes[2], in_chans=3, embed_dim=base_channel*4*self.patch_sizes[2]**2),
         ])
         self.swinT_blocks = nn.ModuleList([
-            SwinTransformerBlock(base_channel*self.patch_sizes[0]**2, self.patch_embeds[0].patches_resolution, 8, 8),
-            SwinTransformerBlock(base_channel*2*self.patch_sizes[1]**2, self.patch_embeds[1].patches_resolution, 8, 4),
-            SwinTransformerBlock(base_channel*4*self.patch_sizes[2]**2, self.patch_embeds[2].patches_resolution, 8, 2),
+            nn.Sequential(
+                *(SwinTransformerBlock(base_channel*self.patch_sizes[0]**2, self.patch_embeds[0].patches_resolution, 8, 8) 
+                for _ in range(num_swinT))
+            ),
+            nn.Sequential(
+                *(SwinTransformerBlock(base_channel*2*self.patch_sizes[1]**2, self.patch_embeds[1].patches_resolution, 8, 4)
+                for _ in range(num_swinT))
+            ),
+            nn.Sequential(
+                *(SwinTransformerBlock(base_channel*4*self.patch_sizes[2]**2, self.patch_embeds[2].patches_resolution, 8, 2)
+                for _ in range(num_swinT))
+            )
         ])
 
         self.FAM1 = FAM(base_channel * 4)

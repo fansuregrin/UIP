@@ -93,7 +93,8 @@ def create_network(cfg: Dict[str, Any]):
     elif name == 'mimo_swinT_unet':
         net = MIMOSwinTUNet(
             img_size = cfg['img_size'],
-            num_res = cfg['num_res']
+            num_res = cfg['num_res'],
+            num_swinT = cfg['num_swinT']
         )
     elif name == 'fcn':
         net = FCN(
