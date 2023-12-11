@@ -12,8 +12,11 @@ from collections import OrderedDict
 def gen_comparison(
         img_name_list,
         img_dirs,
-        font_size=28,
+        font_cfg=None,
         expected_size=(256, 256),
+        title_y=-1.0,
+        w_pad=None,
+        h_pad=None,
         save_fig=False,
         save_folder=None,
         save_fmt='png',
@@ -21,12 +24,9 @@ def gen_comparison(
     num_rows = len(img_name_list)
     num_cols = len(img_dirs)
 
-    fig, axes = plt.subplots(num_rows, num_cols, figsize=(num_cols*3, num_rows*3.5))
-
-    label_font = {
-        'fontfamily': 'Nimbus Roman',
-        'fontsize': font_size,
-    }
+    fig_width = num_cols * (expected_size[0]/100*(1+0.1))
+    fig_height = num_rows * (expected_size[1]/100*(1+0.1))
+    fig, axes = plt.subplots(num_rows, num_cols, figsize=(fig_width, fig_height))
 
     if not isinstance(img_dirs, OrderedDict):
         img_dirs = OrderedDict(img_dirs)
@@ -39,10 +39,10 @@ def gen_comparison(
                 img = img.resize(expected_size)
             ax = axes[i, j]
             ax.axis('off')
-            if i == 0:
-                ax.set_title(label, **label_font)
+            if i == num_rows-1:
+                ax.set_title(label, fontdict=font_cfg, y=title_y)
             ax.imshow(img)
-    fig.tight_layout()
+    fig.tight_layout(w_pad=w_pad, h_pad=h_pad)
     if not save_fig:
         fig.show()
     if save_fig and os.path.exists(save_folder):
@@ -156,8 +156,9 @@ def gen_comparison_with_local_edges(
         img_name_list,
         local_areas,
         img_dirs,
-        font_size=28,
+        font_cfg=None,
         expected_size=(256, 256),
+        title_y=-0.2,
         outline_color=(255,255,0),
         outline_width=3,
         save_fig=False,
@@ -167,12 +168,9 @@ def gen_comparison_with_local_edges(
     num_rows = len(img_name_list)
     num_cols = len(img_dirs)
 
-    fig, axes = plt.subplots(num_rows, num_cols, figsize=(num_cols*3*2, num_rows*3.5))
-
-    label_font = {
-        'fontfamily': 'Nimbus Roman',
-        'fontsize': font_size,
-    }
+    fig_width = num_cols * (2*expected_size[0]/100*(1+0.1)) 
+    fig_height = num_rows * (expected_size[1]/100*(1+0.1))
+    fig, axes = plt.subplots(num_rows, num_cols, figsize=(fig_width, fig_height))
 
     if not isinstance(img_dirs, OrderedDict):
         img_dirs = OrderedDict(img_dirs)
@@ -199,8 +197,8 @@ def gen_comparison_with_local_edges(
             full_img = np.concatenate((img, local_edges), 1)
             ax = axes[i, j]
             ax.axis('off')
-            if i == 0:
-                ax.set_title(label, **label_font)
+            if i == num_rows-1:
+                ax.set_title(label, fontdict=font_cfg, y=title_y)
             ax.imshow(full_img)
     fig.tight_layout()
     if not save_fig:
