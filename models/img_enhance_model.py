@@ -47,8 +47,8 @@ class ImgEnhanceModel(BaseModel):
             self.checkpoint_dir = cfg['checkpoint_dir']
             self.result_dir = cfg['result_dir']
         
-    def load_weights(self, weights_path: str):
-        weights_path = os.path.join(self.checkpoint_dir, weights_path)
+    def load_weights(self, weights_name: str):
+        weights_path = os.path.join(self.checkpoint_dir, weights_name)
         self.network.load_state_dict(torch.load(weights_path))
         if self.logger:
             self.logger.info('Loaded model weights from {}.'.format(
@@ -99,9 +99,12 @@ class ImgEnhanceModel(BaseModel):
 
     def train(self, train_dl: DataLoader, val_dl: DataLoader):
         assert self.mode == 'train', f"The mode must be 'train', but got {self.mode}"
-        assert len(train_dl) * self.start_epoch == self.start_iteration
         if self.start_epoch > 0:
-            self.load_weights(f'weights_{self.start_epoch-1}.pth')
+            load_prefix = self.cfg.get('load_prefix', None)
+            if load_prefix:
+                self.load_weights(f'{load_prefix}_{self.start_epoch-1}.pth')
+            else:
+                self.load_weights(f'weights_{self.start_epoch-1}.pth')
         iteration_index = self.start_iteration
         for epoch in range(self.start_epoch, self.start_epoch + self.num_epochs):
             for i, batch in enumerate(train_dl):
@@ -160,7 +163,14 @@ class ImgEnhanceModel(BaseModel):
                                        iteration)
     
     def save_model_weights(self, epoch: int):
-        saved_path = os.path.join(self.checkpoint_dir, "weights_{:d}.pth".format(epoch))
+        load_prefix = self.cfg.get('load_prefix', None)
+        save_prefix = self.cfg.get('save_prefix', None)
+        if not save_prefix:
+            save_prefix = load_prefix
+        if save_prefix:
+            saved_path = os.path.join(self.checkpoint_dir, "{}_{:d}.pth".format(save_prefix, epoch))
+        else:
+            saved_path = os.path.join(self.checkpoint_dir, "weights_{:d}.pth".format(epoch))
         torch.save(self.network.state_dict(), saved_path)
         if self.logger:
             self.logger.info("Saved model weights into {}".format(saved_path))
@@ -179,10 +189,12 @@ class ImgEnhanceModel(BaseModel):
             full_img = cv2.cvtColor(full_img, cv2.COLOR_RGB2BGR)
             cv2.imwrite(os.path.join(self.sample_dir, f'{iteration:06d}.png'), full_img)
     
-    def test(self, test_dl: DataLoader, epoch: int, test_name: str):
+    def test(self, test_dl: DataLoader, epoch: int, test_name: str, load_prefix='weights'):
         assert self.mode == 'test', f"The mode must be 'test', but got {self.mode}"
         
-        result_dir = os.path.join(self.result_dir, test_name, f"epoch_{epoch}")
+        weights_name = f"{load_prefix}_{epoch}"
+        self.load_weights(f"{weights_name}.pth")
+        result_dir = os.path.join(self.result_dir, test_name, weights_name)
         if os.path.exists(result_dir):
             shutil.rmtree(result_dir)
         os.makedirs(result_dir)
@@ -415,10 +427,12 @@ class ImgEnhanceModel7(ImgEnhanceModel):
 
         return full_img
     
-    def test(self, test_dl: DataLoader, epoch: int, test_name: str):
+    def test(self, test_dl: DataLoader, epoch: int, test_name: str, load_prefix='weights'):
         assert self.mode == 'test', f"The mode must be 'test', but got {self.mode}"
         
-        result_dir = os.path.join(self.result_dir, test_name, f"epoch_{epoch}")
+        weights_name = f"{load_prefix}_{epoch}"
+        self.load_weights(f"{weights_name}.pth")
+        result_dir = os.path.join(self.result_dir, test_name, weights_name)
         if os.path.exists(result_dir):
             shutil.rmtree(result_dir)
         os.makedirs(result_dir)
