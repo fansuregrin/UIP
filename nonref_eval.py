@@ -18,6 +18,7 @@ parser.add_argument('--net', type=str, default='ra')
 parser.add_argument('--name', type=str)
 parser.add_argument('--ds_name', type=str)
 parser.add_argument('--epochs', type=int, nargs='+')
+parser.add_argument("--load_prefix", type=str, default='weights', help="the prefix string of the filename of the weights to be loaded")
 
 args = parser.parse_args()
 
@@ -41,7 +42,7 @@ epochs_vals = OrderedDict()
 
 for epoch in args.epochs:
     results_dir = os.path.join(args.results_dir, args.model_v, args.net,
-                                 args.name, args.ds_name, f'epoch_{epoch}')
+                                 args.name, args.ds_name, f'{args.load_prefix}_{epoch}')
     print(f'evaluating [{results_dir}]...')
     pred_imgs_dir = os.path.join(results_dir, 'single/predicted')
     noref_f = open(os.path.join(results_dir, 'noref_eval.csv'), 'w')

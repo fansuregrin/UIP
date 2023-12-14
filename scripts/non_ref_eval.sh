@@ -33,7 +33,8 @@ do
             --net ${net} \
             --name ${name} \
             --ds_name ${ds_name} \
-            --epochs ${epoch}
+            --epochs ${epoch} \
+            --load_prefix ${load_prefix}
     else
         echo -e "${RED}[${target_dir}]${ENDSTYLE} not exist!"
     fi
