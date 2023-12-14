@@ -28,6 +28,8 @@ parser.add_argument("--start_iteration", type=int, default=0, help="which iterat
 parser.add_argument("--num_epochs", type=int, default=50, help="number of epochs for training")
 parser.add_argument("--batch_size", type=int, default=8, help="size of batches")
 parser.add_argument("--seed", type=int, default=2023, help="lucky random seed")
+parser.add_argument("--load_prefix", type=str, default='weights', help="the prefix string of the filename of the weights to be loaded")
+parser.add_argument("--save_prefix", type=str, default='', help="the prefix string of the filename that needs to save the weights")
 parser.add_argument("--optimizer", type=str, default='adam', help='which optimizer to use')
 parser.add_argument("--lr", type=float, default=0.001, help="learning rate for optimizer")
 parser.add_argument("--lambda_mae", type=float, default=1.0, help="weight of MAE loss")
@@ -121,6 +123,8 @@ model_cfg = {
     'name': args.name,
     'start_epoch': args.start_epoch,
     'start_iteration': args.start_iteration,
+    'load_prefix': args.load_prefix,
+    'save_prefix': args.save_prefix,
     'num_epochs': args.num_epochs,
     'val_interval': args.val_interval,
     'ckpt_interval': args.ckpt_interval,

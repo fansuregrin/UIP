@@ -24,6 +24,7 @@ parser.add_argument('--checkpoint_dir', type=str, default='checkpoints', help='p
 parser.add_argument("--result_dir", type=str, default="results")
 parser.add_argument("--batch_size", type=int, default=4, help="size of batches")
 parser.add_argument("--epoch", type=int, nargs='+', default=99, help="which epoch to load")
+parser.add_argument("--load_prefix", type=str, default='weights', help="the prefix string of the filename of the weights to be loaded")
 args = parser.parse_args()
 
 model_v = 'ie'
@@ -94,5 +95,4 @@ model = create_model(model_v, model_cfg)
 # Test pipeline
 os.makedirs(os.path.join(result_dir, args.test_name), exist_ok=True)
 for epoch in args.epoch:
-    model.load_weights(f'weights_{epoch}.pth')
-    model.test(test_dl, epoch, args.test_name)
+    model.test(test_dl, epoch, args.test_name, load_prefix=args.load_prefix)
