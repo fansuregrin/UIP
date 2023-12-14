@@ -1,6 +1,7 @@
 GREEN="\e[32m"
 RED="\e[31m"
 BOLD="\e[1m"
+BOLD_GREEN="\e[1;32m"
 ENDSTYLE="\e[0m"
 
 ds_names=(U45 RUIE_Color90 UPoor200 UW2023)
@@ -13,7 +14,7 @@ then
     echo -e "3) name"
     echo -e "4) epoch"
     echo -e "5) load_prefix"
-    echo -e "for example: ${BOLD}bash ${0} ie ra LSUI_01 299${ENDSTYLE}"
+    echo -e "for example: \"${BOLD_GREEN}bash ${0} ie ra LSUI_01 299 weights${ENDSTYLE}\""
     exit -1
 fi
 model_v=${1}

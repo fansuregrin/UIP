@@ -1,6 +1,7 @@
 GREEN="\e[32m"
 RED="\e[31m"
 BOLD="\e[1m"
+BOLD_GREEN="\e[1;32m"
 ENDSTYLE="\e[0m"
 
 declare -A ds_dict
@@ -18,7 +19,7 @@ then
     echo -e "3) name"
     echo -e "4) epoch"
     echo -e "5) load_prefix"
-    echo -e "for example: ${BOLD}bash ${0} ie configs/network/ra_9blocks_2down.yaml LSUI_01 299${ENDSTYLE}"
+    echo -e "for example: \"${BOLD_GREEN}bash ${0} ie configs/network/ra_9blocks_2down.yaml LSUI_01 299 weights${ENDSTYLE}\""
     exit -1
 fi
 model_v=${1}
