@@ -9,13 +9,14 @@ refer_dict=([EUVP515]="/DataA/pwz/workshop/Datasets/EUVP_Dataset/test_samples/GT
             [UIEB100]="/DataA/pwz/workshop/Datasets/UIEB100/reference"
             [LSUI]="/DataA/pwz/workshop/Datasets/LSUI/test/ref")
 
-if [ $# -lt 4 ]
+if [ $# -lt 5 ]
 then
     echo -e "${RED}PLEASE PASS IN THE FOLLOWING ARGUMENTS IN ORDER!${ENDSTYLE}"
     echo -e "1) model_v"
     echo -e "2) net"
     echo -e "3) name"
     echo -e "4) epoch"
+    echo -e "5) load_prefix"
     echo -e "for example: ${BOLD}bash ${0} ie ra LSUI_01 299${ENDSTYLE}"
     exit -1
 fi
@@ -23,10 +24,11 @@ model_v=${1}
 net=${2}
 name=${3}
 epoch=${4}
+load_prefix=${5}
 
 for ds_name in ${!refer_dict[@]}
 do
-    target_dir="results/${model_v}/${net}/${name}/${ds_name}/epoch_${epoch}"
+    target_dir="results/${model_v}/${net}/${name}/${ds_name}/${load_prefix}_${epoch}"
     if [ -d ${target_dir} ]
     then
         python ./calc_psnr_ssim.py \
@@ -39,13 +41,13 @@ do
     fi
 done
 
-echo -e "reference eval of [${GREEN}${model_v}/${net}/${name}/epoch_${epoch}${ENDSTYLE}]"
+echo -e "reference eval of [${GREEN}${model_v}/${net}/${name}/${load_prefix}_${epoch}${ENDSTYLE}]"
 echo "========================================"
 printf "${BOLD}%-8s %-15s %-8s %-8s${ENDSTYLE}\n" epoch ds_name psnr ssim
 echo "----------------------------------------"
 for ds_name in ${!refer_dict[@]}
 do
-    target_file="results/${model_v}/${net}/${name}/${ds_name}/epoch_${epoch}/ref_eval.csv"
+    target_file="results/${model_v}/${net}/${name}/${ds_name}/${load_prefix}_${epoch}/ref_eval.csv"
     if [ -f "${target_file}" ]; then
         psnr=`tail "${target_file}" -n 1 | awk -F, '{print $2}'`
         ssim=`tail "${target_file}" -n 1 | awk -F, '{print $3}'`
