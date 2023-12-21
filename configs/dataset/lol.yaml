@@ -1,0 +1,14 @@
+train: &train
+  root_dir: '/DataA/pwz/workshop/Datasets/LOL/our485'
+  inp_dir: 'low'
+  ref_dir: 'high'
+  width: 256
+  height: 256
+  preprocess: 'resize'
+val:
+  root_dir: '/DataA/pwz/workshop/Datasets/LOL/eval15'
+  <<: *train
+test:
+  type: 'paired_img'
+  root_dir: '/DataA/pwz/workshop/Datasets/LOL/eval15'
+  <<: *train

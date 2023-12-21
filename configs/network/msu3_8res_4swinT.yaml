@@ -1,0 +1,4 @@
+name: 'mimo_swinT_unet3'
+img_size: 256
+num_res: 8
+num_swinT: 4

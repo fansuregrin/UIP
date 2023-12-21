@@ -1,0 +1,6 @@
+test:
+  type: 'single_img'
+  root_dir: '/DataA/pwz/workshop/Datasets/OceanDark'
+  width: 256
+  height: 256
+  preprocess: 'resize'
