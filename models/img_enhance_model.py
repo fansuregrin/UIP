@@ -485,3 +485,13 @@ class ImgEnhanceModel7(ImgEnhanceModel):
                     epoch, frame_rate
                 )
             )
+
+
+class ImgEnhanceModel8(ImgEnhanceModel7):
+    def _set_loss_fn(self):
+        self.mae_loss_fn = nn.L1Loss(reduction=self.cfg['l1_reduction']).to(self.device)
+        self.ssim_loss_fn = SSIMLoss(11).to(self.device)
+        self.four_loss_fn = FourDomainLoss3().to(self.device)
+        self.lambda_mae  = self.cfg['lambda_mae']
+        self.lambda_ssim = self.cfg['lambda_ssim']
+        self.lambda_four = self.cfg['lambda_four']
