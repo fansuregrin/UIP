@@ -68,6 +68,10 @@ def gen_comparison_with_local_mag(
     fig_width = num_cols * (2*expected_size[0]/100*(1+0.1)) 
     fig_height = num_rows * (expected_size[1]/100*(1+0.1))
     fig, axes = plt.subplots(num_rows, num_cols, figsize=(fig_width, fig_height))
+    if num_rows == 1:
+        axes = np.expand_dims(axes, 0)
+    elif num_cols == 1:
+        axes = np.expand_dims(axes, 1)
 
     if not isinstance(img_dirs, OrderedDict):
         img_dirs = OrderedDict(img_dirs)
@@ -102,8 +106,9 @@ def gen_comparison_with_local_mag2(
         img_name,
         local_area,
         img_dirs,
-        font_size=28,
+        font_cfg=None,
         expected_size=(256, 256),
+        title_y=-0.2,
         outline_color=(255,255,0),
         outline_width=3,
         save_fig=False,
@@ -114,12 +119,9 @@ def gen_comparison_with_local_mag2(
     num_rows = math.floor(math.sqrt(num))
     num_cols = math.ceil(num/num_rows)
 
-    fig, axes = plt.subplots(num_rows, num_cols, figsize=(num_cols*3*2, num_rows*3.5))
-
-    label_font = {
-        'fontfamily': 'Nimbus Roman',
-        'fontsize': font_size,
-    }
+    fig_width = num_cols * (2*expected_size[0]/100*(1+0.1)) 
+    fig_height = num_rows * (expected_size[1]/100*(1+0.1))
+    fig, axes = plt.subplots(num_rows, num_cols, figsize=(fig_width, fig_height))
 
     if not isinstance(img_dirs, OrderedDict):
         img_dirs = OrderedDict(img_dirs)
@@ -141,7 +143,7 @@ def gen_comparison_with_local_mag2(
             local_mag = np.asarray(local_mag, dtype=np.uint8)
             full_img = np.concatenate((img, local_mag), 1)
             ax = axes[i]
-            ax.set_title(label, **label_font)
+            ax.set_title(label, fontdict=font_cfg, y=title_y)
             ax.imshow(full_img)
     fig.tight_layout()
     if not save_fig:
