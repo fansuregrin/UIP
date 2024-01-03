@@ -27,6 +27,10 @@ def gen_comparison(
     fig_width = num_cols * (expected_size[0]/100*(1+0.1))
     fig_height = num_rows * (expected_size[1]/100*(1+0.1))
     fig, axes = plt.subplots(num_rows, num_cols, figsize=(fig_width, fig_height))
+    if num_rows == 1:
+        axes = np.expand_dims(axes, 0)
+    elif num_cols == 1:
+        axes = np.expand_dims(axes, 1)
 
     if not isinstance(img_dirs, OrderedDict):
         img_dirs = OrderedDict(img_dirs)
@@ -43,6 +47,46 @@ def gen_comparison(
                 ax.set_title(label, fontdict=font_cfg, y=title_y)
             ax.imshow(img)
     fig.tight_layout(w_pad=w_pad, h_pad=h_pad)
+    if not save_fig:
+        fig.show()
+    if save_fig and os.path.exists(save_folder):
+        fig.savefig(os.path.join(save_folder, f"{save_name}.{save_fmt}"), format=save_fmt)
+
+
+def gen_comparison2(
+        img_name,
+        img_dirs,
+        font_cfg=None,
+        expected_size=(256, 256),
+        title_y=-0.2,
+        save_fig=False,
+        save_folder=None,
+        save_fmt='png',
+        save_name='comparison'):
+    num = len(img_dirs)
+    num_rows = math.floor(math.sqrt(num))
+    num_cols = math.ceil(num/num_rows)
+
+    fig_width = num_cols * (expected_size[0]/100*(1+0.1))
+    fig_height = num_rows * (expected_size[1]/100*(1+0.1))
+    fig, axes = plt.subplots(num_rows, num_cols, figsize=(fig_width, fig_height))
+
+    if not isinstance(img_dirs, OrderedDict):
+        img_dirs = OrderedDict(img_dirs)
+
+    axes = axes.flatten()
+    for ax in axes:
+        ax.axis('off')
+    for i,label in enumerate(img_dirs.keys()): 
+            img_fp = os.path.join(img_dirs[label], img_name)
+            img = Image.open(img_fp)
+            if img.size != expected_size:
+                img = img.resize(expected_size)
+            img = np.asarray(img, dtype=np.uint8)
+            ax = axes[i]
+            ax.set_title(label, fontdict=font_cfg, y=title_y)
+            ax.imshow(img)
+    fig.tight_layout()
     if not save_fig:
         fig.show()
     if save_fig and os.path.exists(save_folder):
