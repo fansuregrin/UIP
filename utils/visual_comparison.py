@@ -57,6 +57,7 @@ def gen_comparison2(
         img_name,
         img_dirs,
         font_cfg=None,
+        n_row=None,
         expected_size=(256, 256),
         title_y=-0.2,
         save_fig=False,
@@ -64,7 +65,10 @@ def gen_comparison2(
         save_fmt='png',
         save_name='comparison'):
     num = len(img_dirs)
-    num_rows = math.floor(math.sqrt(num))
+    if n_row:
+        num_rows = n_row
+    else:
+        num_rows = math.floor(math.sqrt(num))
     num_cols = math.ceil(num/num_rows)
 
     fig_width = num_cols * (expected_size[0]/100*(1+0.1))
