@@ -1,0 +1,14 @@
+train: &train
+  root_dir: '/DataA/pwz/workshop/Datasets/LSUI/train'
+  inp_dir: 'inp'
+  ref_dir: 'ref'
+  width: 224
+  height: 224
+  preprocess: 'resize'
+val:
+  root_dir: '/DataA/pwz/workshop/Datasets/LSUI/val'
+  <<: *train
+test:
+  type: 'paired_img'
+  root_dir: '/DataA/pwz/workshop/Datasets/LSUI/test'
+  <<: *train
