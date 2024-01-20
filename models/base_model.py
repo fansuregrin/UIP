@@ -3,7 +3,6 @@ from abc import ABC
 from typing import Union, Dict, Any
 
 from networks import create_network
-from .initialize import init_weight_bias
 
 
 class BaseModel(ABC):
@@ -36,7 +35,5 @@ class BaseModel(ABC):
             self.num_epochs = self.cfg['num_epochs']
             self.val_interval = self.cfg['val_interval']
             self.ckpt_interval = self.cfg['ckpt_interval']
-            if self.start_epoch == 0:
-                self.network.apply(init_weight_bias)
         else:
             assert f"{self.mode} is not supported!"
