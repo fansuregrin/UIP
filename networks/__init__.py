@@ -14,6 +14,7 @@ from .mimo_unet import MIMOUNet
 from .mimo_swinT_unet import (
     MIMOSwinTUNet, MIMOSwinTUNet2, MIMOSwinTUNet3
 )
+from .vit_enhancer import ViTEnhancer1, ViTEnhancer2
 
 
 def create_network(cfg: Dict[str, Any]):
@@ -109,6 +110,34 @@ def create_network(cfg: Dict[str, Any]):
             img_size = cfg['img_size'],
             num_res = cfg['num_res'],
             num_swinT = cfg['num_swinT']
+        )
+    elif name == 'vit_enhancer1':
+        net = ViTEnhancer1(
+            output_nc = cfg['output_nc'],
+            n_up = cfg['n_up'],
+            img_h = cfg['img_h'],
+            img_w = cfg['img_w'],
+            ngf = cfg['ngf'],
+            patch_h = cfg['patch_h'],
+            patch_w = cfg['patch_w'],
+            vit_scale = cfg['vit_scale'],
+            use_dropout = cfg['use_dropout'],
+            use_att_up = cfg['use_att_up'],
+            pretrained_encoder = cfg['pretrained_encoder']
+        )
+    elif name == 'vit_enhancer2':
+        net = ViTEnhancer2(
+            output_nc = cfg['output_nc'],
+            n_up = cfg['n_up'],
+            img_h = cfg['img_h'],
+            img_w = cfg['img_w'],
+            ngf = cfg['ngf'],
+            patch_h = cfg['patch_h'],
+            patch_w = cfg['patch_w'],
+            vit_scale = cfg['vit_scale'],
+            use_dropout = cfg['use_dropout'],
+            use_att_up = cfg['use_att_up'],
+            pretrained_encoder = cfg['pretrained_encoder']
         )
     elif name == 'fcn':
         net = FCN(
