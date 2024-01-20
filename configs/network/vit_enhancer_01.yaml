@@ -1,0 +1,12 @@
+name: vit_enhancer1
+output_nc: 3
+n_up: 4
+img_h: 224
+img_w: 224
+ngf: 64
+patch_h: 16
+patch_w: 16
+vit_scale: tiny
+use_dropout: false
+use_att_up: true
+pretrained_encoder: true
