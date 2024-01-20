@@ -96,6 +96,50 @@ def gen_comparison2(
     if save_fig and os.path.exists(save_folder):
         fig.savefig(os.path.join(save_folder, f"{save_name}.{save_fmt}"), format=save_fmt)
 
+def gen_comparison3(
+        img_name_list,
+        img_dirs,
+        font_cfg=None,
+        expected_size=(256, 256),
+        title_x=-0.1,
+        title_y=0.5,
+        w_pad=None,
+        h_pad=None,
+        save_fig=False,
+        save_folder=None,
+        save_fmt='png',
+        save_name='comparison'):
+    num_rows = len(img_dirs)
+    num_cols = len(img_name_list)
+
+    fig_width = num_cols * (expected_size[0]/100*(1+0.1))
+    fig_height = num_rows * (expected_size[1]/100*(1+0.1))
+    fig, axes = plt.subplots(num_rows, num_cols, figsize=(fig_width, fig_height))
+    if num_rows == 1:
+        axes = np.expand_dims(axes, 0)
+    elif num_cols == 1:
+        axes = np.expand_dims(axes, 1)
+
+    if not isinstance(img_dirs, OrderedDict):
+        img_dirs = OrderedDict(img_dirs)
+
+    for i,label in enumerate(img_dirs):
+        for j in range(num_cols):
+            img_fp = os.path.join(img_dirs[label], img_name_list[j])
+            img = Image.open(img_fp)
+            if img.size != expected_size:
+                img = img.resize(expected_size)
+            ax = axes[i, j]
+            ax.axis('off')
+            if j == 0:
+                ax.set_title(label, fontdict=font_cfg, va='center', ha='center', rotation='vertical', x=title_x, y=title_y)
+            ax.imshow(img)
+    fig.tight_layout(w_pad=w_pad, h_pad=h_pad)
+    if not save_fig:
+        fig.show()
+    if save_fig and os.path.exists(save_folder):
+        fig.savefig(os.path.join(save_folder, f"{save_name}.{save_fmt}"), format=save_fmt)
+
 
 def gen_comparison_with_local_mag(
         img_name_list,
