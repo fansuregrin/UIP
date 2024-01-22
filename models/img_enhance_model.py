@@ -211,7 +211,7 @@ class ImgEnhanceModel(BaseModel):
             saved_path = os.path.join(self.checkpoint_dir, 'optimizer', "{}_{:d}.pth".format(save_prefix, epoch))
         else:
             saved_path = os.path.join(self.checkpoint_dir, 'optimizer', "{:d}.pth".format(epoch))
-        torch.save(self.network.state_dict(), saved_path)
+        torch.save(self.optimizer.state_dict(), saved_path)
         if self.logger:
             self.logger.info("Saved optimizer state into {}".format(saved_path))
 
@@ -226,7 +226,7 @@ class ImgEnhanceModel(BaseModel):
             saved_path = os.path.join(self.checkpoint_dir, 'lr_scheduler', "{}_{:d}.pth".format(save_prefix, epoch))
         else:
             saved_path = os.path.join(self.checkpoint_dir, 'lr_scheduler', "{:d}.pth".format(epoch))
-        torch.save(self.network.state_dict(), saved_path)
+        torch.save(self.lr_scheduler.state_dict(), saved_path)
         if self.logger:
             self.logger.info("Saved lr_shceduler state into {}".format(saved_path))
 
