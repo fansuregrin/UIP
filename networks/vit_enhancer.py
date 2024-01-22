@@ -92,7 +92,8 @@ class ViTEnhancer2(nn.Module):
                  patch_w: int = 16,
                  vit_scale: str = 'tiny',
                  use_dropout: bool = False,
-                 use_att_up: bool = True):
+                 use_att_up: bool = True,
+                 pretrained_encoder = True):
         super().__init__()
         self.img_h = img_h
         self.img_w = img_w
@@ -102,7 +103,7 @@ class ViTEnhancer2(nn.Module):
         self.patch_w = patch_w
         self.vit_scale = vit_scale
 
-        self.encoder = self.get_encoder()(pretrained=True)
+        self.encoder = self.get_encoder()(pretrained=pretrained_encoder)
         
         self.project = nn.Linear(self.encoder.embed_dim, 2**n_up*ngf)
 
