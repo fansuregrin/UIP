@@ -90,6 +90,19 @@ class FAM(nn.Module):
         return out
 
 
+class FAM2(nn.Module):
+    def __init__(self, channel1, channel2):
+        super().__init__()
+        self.trans = BasicConv(channel1, channel2, kernel_size=3, relu=True, stride=2)
+        self.merge = BasicConv(channel2, channel2, kernel_size=3, stride=1, relu=False)
+
+    def forward(self, x1, x2):
+        x1 = self.trans(x1)
+        x = x1 * x2
+        out = x1 + self.merge(x)
+        return out
+
+
 class FFRLM(nn.Module):
     def __init__(self, in_channel, out_channel, num_res=8):
         super().__init__()
@@ -474,5 +487,130 @@ class MIMOSwinTUNet3(nn.Module):
         d_1 = self.Decoders[0](torch.cat([res_1, self.upsamples[1](d_2)], dim=1))
         d_1_out = self.OutConvs[0](d_1)
         outputs[1] = torch.sigmoid(d_1_out)
+
+        return outputs
+
+
+class MIMOSwinTUNet4(nn.Module):
+    def __init__(self, img_size=256, num_res=8, num_swinT=4, fused_window_process=False):
+        super().__init__()
+
+        base_channel = 32
+        self.base_channel = base_channel
+
+        self.Encoder = nn.ModuleList([
+            EBlock(base_channel, num_res),
+            EBlock(base_channel*2, num_res),
+            EBlock(base_channel*4, num_res),
+        ])
+
+        self.UpConvs = nn.ModuleList([
+            BasicConv(base_channel*4, base_channel*2, kernel_size=4, relu=True, stride=2, transpose=True),
+            BasicConv(base_channel*2, base_channel, kernel_size=4, relu=True, stride=2, transpose=True),
+        ])
+
+        self.Decoder = nn.ModuleList([
+            DBlock(base_channel, num_res),
+            DBlock(base_channel * 2, num_res),
+            DBlock(base_channel * 4, num_res),
+        ])
+
+        self.Convs = nn.ModuleList([
+            BasicConv(base_channel * 4, base_channel * 2, kernel_size=1, relu=True, stride=1),
+            BasicConv(base_channel * 2, base_channel, kernel_size=1, relu=True, stride=1),
+        ])
+
+        self.OutConvs = nn.ModuleList(
+            [
+                BasicConv(base_channel, 3, kernel_size=3, relu=False, stride=1),
+                BasicConv(base_channel * 2, 3, kernel_size=3, relu=False, stride=1),
+                BasicConv(base_channel * 4, 3, kernel_size=3, relu=False, stride=1),
+            ]
+        )
+
+        self.AFFs = nn.ModuleList([
+            AFF(base_channel * 7, base_channel*1),
+            AFF(base_channel * 7, base_channel*2)
+        ])
+
+        self.patch_sizes = [4, 2, 1]
+        self.patch_embeds = nn.ModuleList([
+            PatchEmbed(img_size=img_size, patch_size=self.patch_sizes[0], in_chans=3, embed_dim=base_channel*self.patch_sizes[0]**2),
+            PatchEmbed(img_size=img_size//2, patch_size=self.patch_sizes[1], in_chans=3, embed_dim=base_channel*2*self.patch_sizes[1]**2),
+            PatchEmbed(img_size=img_size//4, patch_size=self.patch_sizes[2], in_chans=3, embed_dim=base_channel*4*self.patch_sizes[2]**2),
+        ])
+        self.swinT_blocks = nn.ModuleList([
+            nn.Sequential(
+                *(SwinTransformerBlock(base_channel*self.patch_sizes[0]**2, 
+                                       self.patch_embeds[0].patches_resolution, 8, 8, 
+                                       fused_window_process=fused_window_process) 
+                for _ in range(num_swinT))
+            ),
+            nn.Sequential(
+                *(SwinTransformerBlock(base_channel*2*self.patch_sizes[1]**2, 
+                                       self.patch_embeds[1].patches_resolution, 8, 4,
+                                       fused_window_process=fused_window_process)
+                for _ in range(num_swinT))
+            ),
+            nn.Sequential(
+                *(SwinTransformerBlock(base_channel*4*self.patch_sizes[2]**2, 
+                                       self.patch_embeds[2].patches_resolution, 8, 2,
+                                       fused_window_process=fused_window_process)
+                for _ in range(num_swinT))
+            )
+        ])
+
+        self.FAMs = nn.ModuleList([
+            FAM2(base_channel, base_channel * 2),
+            FAM2(base_channel * 2, base_channel * 4)
+        ])
+
+    def forward(self, x):
+        outputs = dict()
+
+        x_2 = F.interpolate(x, scale_factor=0.5)      # input of 2nd scale
+        x_3 = F.interpolate(x_2, scale_factor=0.5)    # input of 3rd scale
+
+        z_1 = self.patch_embeds[0](x)
+        z_2 = self.patch_embeds[1](x_2)
+        z_3 = self.patch_embeds[2](x_3)
+
+        z_1 = self.swinT_blocks[0](z_1)
+        z_2 = self.swinT_blocks[1](z_2)
+        z_3 = self.swinT_blocks[2](z_3)
+
+        z_1 = rearrange(z_1, 'b (hr wr) (ph pw c) -> b c (hr ph) (wr pw)', hr=64, ph=self.patch_sizes[0], c=self.base_channel)
+        z_2 = rearrange(z_2, 'b (hr wr) (ph pw c) -> b c (hr ph) (wr pw)', hr=64, ph=self.patch_sizes[1], c=self.base_channel*2)
+        z_3 = rearrange(z_3, 'b (hr wr) (ph pw c) -> b c (hr ph) (wr pw)', hr=64, ph=self.patch_sizes[2], c=self.base_channel*4)
+
+        res1 = self.Encoder[0](z_1)
+
+        z_2 = self.FAMs[0](res1, z_2)
+        res2 = self.Encoder[1](z_2)
+
+        z_3 = self.FAMs[1](res2, z_3)
+        res3 = self.Encoder[2](z_3)
+
+        z_1to2 = F.interpolate(res1, scale_factor=0.5)
+        z_2to1 = F.interpolate(res2, scale_factor=2)
+        z_3to2 = F.interpolate(res3, scale_factor=2)
+        z_3to1 = F.interpolate(z_3to2, scale_factor=2)
+
+        f1 = self.AFFs[0](res1, z_2to1, z_3to1)
+        f2 = self.AFFs[1](z_1to2, res2, z_3to2)
+
+        d3 = self.Decoder[2](res3)
+        d3_out = self.OutConvs[2](d3)
+        outputs[0.25] = torch.sigmoid(d3_out+x_3)
+
+        t = torch.cat([self.UpConvs[0](d3), f2], dim=1)
+        d2 = self.Decoder[1](self.Convs[0](t))
+        d2_out = self.OutConvs[1](d2)
+        outputs[0.5] = torch.sigmoid(d2_out+x_2)
+
+        t = torch.cat([self.UpConvs[1](d2), f1], dim=1)
+        d1 = self.Decoder[0](self.Convs[1](t))
+        d1_out = self.OutConvs[0](d1)
+        outputs[1] = torch.sigmoid(d1_out+x)
 
         return outputs

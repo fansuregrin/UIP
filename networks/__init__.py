@@ -12,7 +12,7 @@ from .unet import UNet
 from .four_net import FourNet
 from .mimo_unet import MIMOUNet
 from .mimo_swinT_unet import (
-    MIMOSwinTUNet, MIMOSwinTUNet2, MIMOSwinTUNet3
+    MIMOSwinTUNet, MIMOSwinTUNet2, MIMOSwinTUNet3, MIMOSwinTUNet4
 )
 from .vit_enhancer import ViTEnhancer1, ViTEnhancer2
 
@@ -110,6 +110,13 @@ def create_network(cfg: Dict[str, Any]):
             img_size = cfg['img_size'],
             num_res = cfg['num_res'],
             num_swinT = cfg['num_swinT']
+        )
+    elif name == 'mimo_swinT_unet4':
+        net = MIMOSwinTUNet4(
+            img_size = cfg['img_size'],
+            num_res = cfg['num_res'],
+            num_swinT = cfg['num_swinT'],
+            fused_window_process=cfg['fused_window_process']
         )
     elif name == 'vit_enhancer1':
         net = ViTEnhancer1(
