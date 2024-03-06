@@ -1,11 +1,9 @@
 from typing import Dict, Any
 
 from .color_enhance import ColorEnhancementNet
-from .ranet import RANet
-from .ranet2 import RANet2
-from .ranet3 import RANet3
-from .ranet4 import RANet4
-from .ranet5 import RANet5
+from .ranet import (
+    RANet, RANet2, RANet3, RANet4, RANet5
+)
 from .ege_unet import EGEUNet
 from .fcn import FCN
 from .unet import UNet
