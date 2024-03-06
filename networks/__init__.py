@@ -2,7 +2,7 @@ from typing import Dict, Any
 
 from .color_enhance import ColorEnhancementNet
 from .ranet import (
-    RANet, RANet2, RANet3, RANet4, RANet5
+    RANet, RANet2, RANet3, RANet4, RANet5, RANet6
 )
 from .ege_unet import EGEUNet
 from .fcn import FCN
@@ -87,6 +87,23 @@ def create_network(cfg: Dict[str, Any]):
             use_wfef_down = cfg['use_wfef_down'],
             use_att_up = cfg['use_att_up'],
             use_wfef_up = cfg['use_wfef_up']
+        )
+    elif name == 'ra6':
+        net = RANet6(
+            cfg['input_nc'], cfg['output_nc'],
+            cfg['n_blocks_res'], cfg['n_down'],
+            input_h = cfg['input_h'], input_w = cfg['input_w'],
+            ngf = cfg['ngf'], n_swinT = cfg['n_swinT'],
+            wrpm_kernel_size = cfg['wrpm_kernel_size'],
+            wrpm_padding_size = cfg['wrpm_padding_size'],
+            fmsm_kernel_size = cfg['fmsm_kernel_size'],
+            fmsm_padding_size = cfg['fmsm_padding_size'],
+            padding_type = cfg['padding_type'],
+            use_dropout = cfg['use_dropout'],
+            use_att_down = cfg['use_att_down'],
+            use_att_up = cfg['use_att_up'],
+            norm_layer = cfg['norm_layer'],
+            fused_window_process = cfg['fused_window_process']
         )
     elif name == 'mimounet':
         net = MIMOUNet(
