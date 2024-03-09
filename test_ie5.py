@@ -23,7 +23,7 @@ parser.add_argument('--test_name', type=str, help='name for test dataset')
 parser.add_argument('--checkpoint_dir', type=str, default='checkpoints', help='path to checkpoint dir')
 parser.add_argument("--result_dir", type=str, default="results")
 parser.add_argument("--batch_size", type=int, default=4, help="size of batches")
-parser.add_argument("--epoch", type=int, nargs='+', default=99, help="which epoch to load")
+parser.add_argument("--epoch", type=int, nargs='+', default=[99,], help="which epoch to load")
 parser.add_argument("--load_prefix", type=str, default='weights', help="the prefix string of the filename of the weights to be loaded")
 args = parser.parse_args()
 
