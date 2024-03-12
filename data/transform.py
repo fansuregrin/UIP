@@ -21,7 +21,7 @@ def get_train_transform(width=256, height=256, process='resize'):
     transforms = A.Compose([
         get_size,
         A.HorizontalFlip(p=0.5),
-        A.RandomBrightnessContrast(p=0.2),
+        # A.RandomBrightnessContrast(p=0.2),
         ToTensorV2()
     ], additional_targets={'ref':'image'})
     return transforms
