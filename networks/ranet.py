@@ -912,6 +912,7 @@ class AttDownBlock(nn.Module):
         super().__init__()
         use_bias = False if norm_layer else True
         self.swinT_resolution = swinT_resolution
+        self.use_att = use_att
         conv_down = [nn.Conv2d(in_channels, out_channels, 4, 2, 1, bias=use_bias)]
         if norm_layer:
             conv_down.append(norm_layer(out_channels))
@@ -929,7 +930,8 @@ class AttDownBlock(nn.Module):
         
     def forward(self, x):
         out = self.conv_down(x)
-        out = self.conv_att(out)
+        if self.use_att:
+            out = self.conv_att(out)
         out = rearrange(out, 'n c h w -> n (h w) c')
         out = self.swinTs(out)
         out = rearrange(out, 'n (h w) c -> n c h w', h=self.swinT_resolution[0])
