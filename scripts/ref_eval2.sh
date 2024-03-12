@@ -48,7 +48,7 @@ do
 done
 
 epochs_space_sep=$(echo ${raw_epochs} | tr ',' ' ')
-python ./get_ref_vals.pyt \
+python ./get_ref_vals.py \
     ${model_v} \
     ${net} \
     ${name} \
