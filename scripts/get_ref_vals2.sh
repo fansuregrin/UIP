@@ -2,6 +2,7 @@ GREEN="\e[32m"
 RED="\e[31m"
 BOLD="\e[1m"
 BOLD_GREEN="\e[1;32m"
+BOLD_BLUE="\e[1;34m"
 ENDSTYLE="\e[0m"
 
 declare -A refer_dict
@@ -35,7 +36,7 @@ then
     echo -e "reference eval of [${GREEN}${model_v}/${net}/${name}/${load_prefix}_{${raw_epochs}}${ENDSTYLE}]"
     for ds_name in ${!refer_dict[@]}
     do
-        echo -e "${BOLD}${ds_name}:${ENDSTYLE}"
+        echo -e "${BOLD_BLUE}${ds_name}:${ENDSTYLE}"
         echo -e "=========================================="
         printf "${BOLD}%-8s %-8s %-8s %-8s${ENDSTYLE}\n" epoch psnr ssim mse
         echo -e "------------------------------------------"

@@ -47,44 +47,10 @@ do
     done
 done
 
-num_epoch=${#epochs[@]}
-if [ ${num_epoch} -gt 1 ]
-then
-    # fetch multiple epochs results for each test_set
-    echo -e "reference eval of [${GREEN}${model_v}/${net}/${name}/${load_prefix}_{${raw_epochs}}${ENDSTYLE}]"
-    for ds_name in ${!refer_dict[@]}
-    do
-        echo -e "${BOLD}${ds_name}:${ENDSTYLE}"
-        echo -e "=========================================="
-        printf "${BOLD}%-8s %-8s %-8s %-8s${ENDSTYLE}\n" epoch psnr ssim mse
-        echo -e "------------------------------------------"
-        for epoch in ${epochs[*]}
-        do
-            target_file="results/${model_v}/${net}/${name}/${ds_name}/${load_prefix}_${epoch}/ref_eval.csv"
-            if [ -f "${target_file}" ]; then
-                psnr=`tail "${target_file}" -n 1 | awk -F, '{print $2}'`
-                ssim=`tail "${target_file}" -n 1 | awk -F, '{print $3}'`
-                mse=`tail "${target_file}" -n 1 | awk -F, '{print $4}'`
-                printf "%-8s %-8s %-8s %-8s\n" ${epoch} ${psnr} ${ssim} ${mse}
-            fi
-        done
-        echo -e "==========================================\n"
-    done
-else
-    epoch=${epochs[0]}
-    echo -e "reference eval of [${GREEN}${model_v}/${net}/${name}/${load_prefix}_${epoch}${ENDSTYLE}]"
-    echo -e "=================================================="
-    printf "${BOLD}%-8s %-15s %-8s %-8s %-8s${ENDSTYLE}\n" epoch ds_name psnr ssim mse
-    echo -e "--------------------------------------------------"
-    for ds_name in ${!refer_dict[@]}
-    do
-        target_file="results/${model_v}/${net}/${name}/${ds_name}/${load_prefix}_${epoch}/ref_eval.csv"
-        if [ -f "${target_file}" ]; then
-            psnr=`tail "${target_file}" -n 1 | awk -F, '{print $2}'`
-            ssim=`tail "${target_file}" -n 1 | awk -F, '{print $3}'`
-            mse=`tail "${target_file}" -n 1 | awk -F, '{print $4}'`
-            printf "%-8s %-15s %-8s %-8s %-8s\n" ${epoch} ${ds_name} ${psnr} ${ssim} ${mse}
-        fi
-    done
-    echo -e "==================================================\n"
-fi
+epochs_space_sep=$(echo ${raw_epochs} | tr ',' ' ')
+python ./get_ref_vals.pyt \
+    ${model_v} \
+    ${net} \
+    ${name} \
+    ${epochs_space_sep} \
+    ${load_prefix}
