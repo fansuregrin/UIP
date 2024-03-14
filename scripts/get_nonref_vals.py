@@ -10,14 +10,14 @@ BOLD_BLUE="\033[1;34m"
 ENDSTYLE="\033[0m"
 
 ds_name_list = [
-    "EUVP515",
-    "OceanEx",
-    "UIEB100",
-    "LSUI",
+    "U45",
+    "RUIE_Color90",
+    "UPoor200",
+    "UW2023",
 ]
 
 metric_names = [
-    'psnr', 'ssim', 'mse'
+    'niqe', 'musiq', 'uranker', 'uciqe', 'uiqm'
 ]
 
 parser = argparse.ArgumentParser(prog="Fetch reference-based values from files")
@@ -36,7 +36,7 @@ args = parser.parse_args()
 
 num_epoch = len(args.epochs)
 if num_epoch > 1:
-    info_str = 'reference eval of [{}{}/{}/{}/{}_{{{}}}{}]\n'.format(
+    info_str = 'non-reference eval of [{}{}/{}/{}/{}_{{{}}}{}]\n'.format(
         GREEN, args.model_v, args.net, args.name, args.load_prefix,
         ','.join(str(e) for e in args.epochs), ENDSTYLE
     )
@@ -60,7 +60,7 @@ if num_epoch > 1:
         info_per_ds += ('-' * (len(metric_names)+1) * 10 + '\n')
         epoch_metric_sums = {name:0.0 for name in metric_names}
         for epoch in args.epochs:
-            target_fifle = f'{args.root_dir}/{args.model_v}/{args.net}/{args.name}/{ds_name}/{args.load_prefix}_{epoch}/ref_eval.csv'
+            target_fifle = f'{args.root_dir}/{args.model_v}/{args.net}/{args.name}/{ds_name}/{args.load_prefix}_{epoch}/noref_eval.csv'
             if not os.path.exists(target_fifle):
                 continue
             df = pd.read_csv(target_fifle)
@@ -104,7 +104,7 @@ else:
     info_str += ('-' * (len(metric_names) * 10 + 15) + '\n')
     metric_sums = {name:0.0 for name in metric_names}
     for ds_name in ds_name_list:
-        target_fifle = f'{args.root_dir}/{args.model_v}/{args.net}/{args.name}/{ds_name}/{args.load_prefix}_{epoch}/ref_eval.csv'
+        target_fifle = f'{args.root_dir}/{args.model_v}/{args.net}/{args.name}/{ds_name}/{args.load_prefix}_{epoch}/noref_eval.csv'
         if not os.path.exists(target_fifle):
             continue
         df = pd.read_csv(target_fifle)

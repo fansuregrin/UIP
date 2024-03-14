@@ -16,7 +16,7 @@ then
     echo -e "1) model_v"
     echo -e "2) net_cfg"
     echo -e "3) name"
-    echo -e "4) epoch"
+    echo -e "4) epochs"
     echo -e "5) load_prefix"
     echo -e "for example: \"${BOLD_GREEN}bash ${0} ie configs/network/ra_9blocks_2down.yaml LSUI_01 299 weights${ENDSTYLE}\""
     exit -1
@@ -24,8 +24,10 @@ fi
 model_v=${1}
 net_cfg=${2}
 name=${3}
-epoch=${4}
+raw_epochs=${4}
 load_prefix=${5}
+
+epochs=$(echo ${raw_epochs} | tr ',' ' ')
 
 for ds_name in ${!ds_dict[@]};
 do
@@ -34,6 +36,6 @@ do
     --net_cfg ${net_cfg} \
     --name ${name} \
     --test_name ${ds_name} \
-    --epoch ${epoch} \
+    --epoch ${epochs} \
     --load_prefix ${load_prefix}
 done
