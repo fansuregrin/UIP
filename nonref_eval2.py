@@ -58,8 +58,6 @@ for img_name in tqdm(img_name_list):
 avg_vals = ['{:.3f}'.format(metrics[name]['val']/len(img_name_list)) for name in metrics]
 noref_f.write('average,{}\n'.format(','.join(avg_vals)))
 noref_f.close()
-for metric_name in metrics:
-    metrics[metric_name]['val'] = 0.0
 
 print('{}'.format('\t'.join(metrics.keys())))
 print('{}'.format('\t'.join(avg_vals)))
