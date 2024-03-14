@@ -35,7 +35,7 @@ do
         target_dir="results/${model_v}/${net}/${name}/${ds_name}/${load_prefix}_${epoch}"
         if [ -d ${target_dir} ]
         then
-            python ./ref_eval.py \
+            python ./ref_eval_pd.py \
                 -inp "${target_dir}/single/predicted" \
                 -ref "${refer_dict[${ds_name}]}" \
                 -out "${target_dir}" \
