@@ -14,6 +14,7 @@ from .mimo_swinT_unet import (
     MIMOSwinTUNet5
 )
 from .vit_enhancer import ViTEnhancer1, ViTEnhancer2
+from .vm_unet.vmunet import VMUNet
 
 
 def create_network(cfg: Dict[str, Any]):
@@ -181,6 +182,14 @@ def create_network(cfg: Dict[str, Any]):
             cfg['c_list'],
             cfg['bridge'],
             cfg['gt_ds']
+        )
+    elif name == 'vmunet':
+        net = VMUNet(
+            in_channels=cfg['in_channels'],
+            out_channels=cfg['out_channels'],
+            depths=cfg['depths'],
+            depths_decoder=cfg['depths_decoder'],
+            drop_path_rate=cfg['drop_path_rate']
         )
     elif name == 'unet':
         net = UNet(
