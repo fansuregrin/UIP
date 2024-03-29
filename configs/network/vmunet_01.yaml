@@ -1,0 +1,14 @@
+name: 'vmunet'
+in_channels: 3
+out_channels: 3
+depths: 
+  - 2
+  - 2
+  - 9
+  - 2
+depths_decoder: 
+  - 2
+  - 9
+  - 2
+  - 2
+drop_path_rate: 0.2
