@@ -15,12 +15,31 @@ from .mimo_swinT_unet import (
 )
 from .vit_enhancer import ViTEnhancer1, ViTEnhancer2
 from .vm_unet.vmunet import VMUNet
+from .vg_unet.vgunet import VGUNet
+from .erd import ERD
 
 
 def create_network(cfg: Dict[str, Any]):
     name = cfg['name']
     if name == 'ce':
         net = ColorEnhancementNet()
+    if name == 'erd':
+        net = ERD(
+            cfg['input_nc'], cfg['output_nc'],
+            cfg['n_blocks_res'], cfg['n_down'],
+            input_h = cfg['input_h'], input_w = cfg['input_w'],
+            ngf = cfg['ngf'], n_swinT = cfg['n_swinT'],
+            wrpm_kernel_size = cfg['wrpm_kernel_size'],
+            wrpm_padding_size = cfg['wrpm_padding_size'],
+            fmsm_kernel_size = cfg['fmsm_kernel_size'],
+            fmsm_padding_size = cfg['fmsm_padding_size'],
+            padding_type = cfg['padding_type'],
+            use_dropout = cfg['use_dropout'],
+            use_ca = cfg['use_ca'],
+            use_sa_swinT = cfg['use_sa_swinT'],
+            norm_layer = cfg['norm_layer'],
+            fused_window_process = cfg['fused_window_process']
+        )
     elif name == 'ra':
         net = RANet(
             cfg['input_nc'], cfg['output_nc'],
@@ -187,6 +206,24 @@ def create_network(cfg: Dict[str, Any]):
         net = VMUNet(
             in_channels=cfg['in_channels'],
             out_channels=cfg['out_channels'],
+            depths=cfg['depths'],
+            depths_decoder=cfg['depths_decoder'],
+            drop_path_rate=cfg['drop_path_rate']
+        )
+    elif name == 'vgunet':
+        net = VGUNet(
+            patch_size=cfg['patch_size'],
+            in_chans=cfg['in_chans'],
+            out_chans=cfg['out_chans'],
+            depths=cfg['depths'],
+            depths_decoder=cfg['depths_decoder'],
+            drop_path_rate=cfg['drop_path_rate']
+        )
+    elif name == 'vgunet2':
+        net = VGUNet(
+            patch_size=cfg['patch_size'],
+            in_chans=cfg['in_chans'],
+            out_chans=cfg['out_chans'],
             depths=cfg['depths'],
             depths_decoder=cfg['depths_decoder'],
             drop_path_rate=cfg['drop_path_rate']
