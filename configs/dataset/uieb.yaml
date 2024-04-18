@@ -1,0 +1,12 @@
+train: &train
+  root_dir: '/DataA/pwz/workshop/Datasets/UIEB-Li'
+  inp_dir: 'raw-890'
+  ref_dir: 'reference-890'
+  width: 256
+  height: 256
+  preprocess: 'resize'
+val:
+  <<: *train
+test:
+  type: 'paired_img'
+  <<: *train

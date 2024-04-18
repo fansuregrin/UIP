@@ -1,0 +1,12 @@
+train: &train
+  root_dir: '/DataA/pwz/workshop/Datasets/EUVP/paired'
+  inp_dir: 'trainA'
+  ref_dir: 'trainB'
+  width: 256
+  height: 256
+  preprocess: 'resize'
+val:
+  <<: *train
+test:
+  type: 'paired_img'
+  <<: *train
