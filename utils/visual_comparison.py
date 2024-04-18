@@ -9,6 +9,13 @@ from PIL import Image, ImageDraw
 from collections import OrderedDict
 
 
+def save_fig(fig, save_folder=None, save_fmt='png',
+             save_name='comparison', clear_after_save=True):
+    if os.path.exists(save_folder):
+        fig.savefig(os.path.join(save_folder, f"{save_name}.{save_fmt}"), format=save_fmt)
+    if clear_after_save:
+        fig.clear()
+
 def gen_comparison(
         img_name_list,
         img_dirs,
@@ -16,11 +23,7 @@ def gen_comparison(
         expected_size=(256, 256),
         title_y=-1.0,
         w_pad=None,
-        h_pad=None,
-        save_fig=False,
-        save_folder=None,
-        save_fmt='png',
-        save_name='comparison'):
+        h_pad=None):
     num_rows = len(img_name_list)
     num_cols = len(img_dirs)
 
@@ -47,10 +50,7 @@ def gen_comparison(
                 ax.set_title(label, fontdict=font_cfg, y=title_y)
             ax.imshow(img)
     fig.tight_layout(w_pad=w_pad, h_pad=h_pad)
-    if not save_fig:
-        fig.show()
-    if save_fig and os.path.exists(save_folder):
-        fig.savefig(os.path.join(save_folder, f"{save_name}.{save_fmt}"), format=save_fmt)
+    return fig
 
 
 def gen_comparison2(
@@ -59,11 +59,7 @@ def gen_comparison2(
         font_cfg=None,
         n_row=None,
         expected_size=(256, 256),
-        title_y=-0.2,
-        save_fig=False,
-        save_folder=None,
-        save_fmt='png',
-        save_name='comparison'):
+        title_y=-0.2):
     num = len(img_dirs)
     if n_row:
         num_rows = n_row
@@ -91,10 +87,7 @@ def gen_comparison2(
             ax.set_title(label, fontdict=font_cfg, y=title_y)
             ax.imshow(img)
     fig.tight_layout()
-    if not save_fig:
-        fig.show()
-    if save_fig and os.path.exists(save_folder):
-        fig.savefig(os.path.join(save_folder, f"{save_name}.{save_fmt}"), format=save_fmt)
+    return fig
 
 def gen_comparison3(
         img_name_list,
@@ -104,11 +97,7 @@ def gen_comparison3(
         title_x=-0.1,
         title_y=0.5,
         w_pad=None,
-        h_pad=None,
-        save_fig=False,
-        save_folder=None,
-        save_fmt='png',
-        save_name='comparison'):
+        h_pad=None):
     num_rows = len(img_dirs)
     num_cols = len(img_name_list)
 
@@ -135,10 +124,7 @@ def gen_comparison3(
                 ax.set_title(label, fontdict=font_cfg, va='center', ha='center', rotation='vertical', x=title_x, y=title_y)
             ax.imshow(img)
     fig.tight_layout(w_pad=w_pad, h_pad=h_pad)
-    if not save_fig:
-        fig.show()
-    if save_fig and os.path.exists(save_folder):
-        fig.savefig(os.path.join(save_folder, f"{save_name}.{save_fmt}"), format=save_fmt)
+    return fig
 
 
 def gen_comparison_with_local_mag(
@@ -149,11 +135,7 @@ def gen_comparison_with_local_mag(
         expected_size=(256, 256),
         title_y=-0.2,
         outline_color=(255,255,0),
-        outline_width=3,
-        save_fig=False,
-        save_folder=None,
-        save_fmt='png',
-        save_name='comparison'):
+        outline_width=3):
     num_rows = len(img_name_list)
     num_cols = len(img_dirs)
 
@@ -188,10 +170,7 @@ def gen_comparison_with_local_mag(
                 ax.set_title(label, fontdict=font_cfg, y=title_y)
             ax.imshow(full_img)
     fig.tight_layout()
-    if not save_fig:
-        fig.show()
-    if save_fig and os.path.exists(save_folder):
-        fig.savefig(os.path.join(save_folder, f"{save_name}.{save_fmt}"), format=save_fmt)
+    return fig
 
 
 def gen_comparison_with_local_mag2(
@@ -202,11 +181,7 @@ def gen_comparison_with_local_mag2(
         expected_size=(256, 256),
         title_y=-0.2,
         outline_color=(255,255,0),
-        outline_width=3,
-        save_fig=False,
-        save_folder=None,
-        save_fmt='png',
-        save_name='comparison'):
+        outline_width=3):
     num = len(img_dirs)
     num_rows = math.floor(math.sqrt(num))
     num_cols = math.ceil(num/num_rows)
@@ -238,10 +213,56 @@ def gen_comparison_with_local_mag2(
             ax.set_title(label, fontdict=font_cfg, y=title_y)
             ax.imshow(full_img)
     fig.tight_layout()
-    if not save_fig:
-        fig.show()
-    if save_fig and os.path.exists(save_folder):
-        fig.savefig(os.path.join(save_folder, f"{save_name}.{save_fmt}"), format=save_fmt)
+    return fig
+
+
+def gen_comparison_with_local_mag3(
+        img_name_list,
+        local_areas,
+        img_dirs,
+        font_cfg=None,
+        expected_size=(256, 256),
+        title_y=-0.2,
+        outline_color=(255,255,0),
+        outline_width=3):
+    num_rows = len(img_name_list)
+    num_cols = len(img_dirs)
+
+    fig_width = num_cols * (expected_size[0]/100*(1+0.1))
+    fig_height = num_rows * (expected_size[1]/100*(1+0.1))
+    fig, axes = plt.subplots(num_rows, num_cols, figsize=(fig_width, fig_height))
+    if num_rows == 1:
+        axes = np.expand_dims(axes, 0)
+    elif num_cols == 1:
+        axes = np.expand_dims(axes, 1)
+
+    if not isinstance(img_dirs, OrderedDict):
+        img_dirs = OrderedDict(img_dirs)
+
+    for i in range(num_rows):        
+        for j, label in enumerate(img_dirs):
+            if j == 0:
+                # display the entire raw underwater image
+                img_fp = os.path.join(img_dirs[label], img_name_list[i])
+                img = Image.open(img_fp)
+                if img.size != expected_size:
+                    img = img.resize(expected_size)
+                draw = ImageDraw.Draw(img)
+                draw.rectangle(local_areas[i], outline=outline_color, width=outline_width)
+            else:
+                img_fp = os.path.join(img_dirs[label], img_name_list[i])
+                img = Image.open(img_fp)
+                if img.size != expected_size:
+                    img = img.resize(expected_size)
+                img = img.crop(local_areas[i]).resize(expected_size)
+            img = np.asarray(img, dtype=np.uint8)
+            ax = axes[i, j]
+            ax.axis('off')
+            if i == num_rows-1:
+                ax.set_title(label, fontdict=font_cfg, y=title_y)
+            ax.imshow(img)
+    fig.tight_layout()
+    return fig
 
 
 def gen_comparison_with_local_edges(
@@ -252,11 +273,7 @@ def gen_comparison_with_local_edges(
         expected_size=(256, 256),
         title_y=-0.2,
         outline_color=(255,255,0),
-        outline_width=3,
-        save_fig=False,
-        save_folder=None,
-        save_fmt='png',
-        save_name='comparison'):
+        outline_width=3):
     num_rows = len(img_name_list)
     num_cols = len(img_dirs)
 
@@ -293,10 +310,7 @@ def gen_comparison_with_local_edges(
                 ax.set_title(label, fontdict=font_cfg, y=title_y)
             ax.imshow(full_img)
     fig.tight_layout()
-    if not save_fig:
-        fig.show()
-    if save_fig and os.path.exists(save_folder):
-        fig.savefig(os.path.join(save_folder, f"{save_name}.{save_fmt}"), format=save_fmt)
+    return fig
 
 
 def gen_comparison_with_local_edges2(
@@ -306,11 +320,7 @@ def gen_comparison_with_local_edges2(
         font_size=28,
         expected_size=(256, 256),
         outline_color=(255,255,0),
-        outline_width=3,
-        save_fig=False,
-        save_folder=None,
-        save_fmt='png',
-        save_name='comparison'):
+        outline_width=3):
     num_rows = len(img_name_list)
     num_cols = len(img_dirs)
 
@@ -357,10 +367,7 @@ def gen_comparison_with_local_edges2(
                 ax.set_title(label, **label_font)
             ax.imshow(full_img)
     fig.tight_layout()
-    if not save_fig:
-        fig.show()
-    if save_fig and os.path.exists(save_folder):
-        fig.savefig(os.path.join(save_folder, f"{save_name}.{save_fmt}"), format=save_fmt)
+    return fig
 
 
 def get_random_img_names(img_dir, num):
