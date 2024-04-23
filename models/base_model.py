@@ -24,7 +24,12 @@ class BaseModel(ABC):
     def setup(self):
         """Setup the model.
         """
-        self.network = create_network(self.net_cfg).to(self.device)
+        self.network = create_network(self.net_cfg)
+        if isinstance(self.network, dict):
+            for label in self.network:
+                self.network[label].to(self.device)
+        else:
+            self.network.to(self.device)
         if self.mode == 'train':
             self.tb_writer = self.cfg['tb_writer']
             self.sample_dir = self.cfg['sample_dir']

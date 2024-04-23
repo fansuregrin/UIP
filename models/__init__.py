@@ -2,7 +2,8 @@ from .img_enhance_model import (
     ImgEnhanceModel, ImgEnhanceModel2,
     ImgEnhanceModel3, ImgEnhanceModel4,
     ImgEnhanceModel5, ImgEnhanceModel6,
-    ImgEnhanceModel7, ImgEnhanceModel8
+    ImgEnhanceModel7, ImgEnhanceModel8,
+    UTUIE
 )
 from .seg_model import SegModel
 
@@ -24,6 +25,8 @@ def create_model(name, cfg):
         model = ImgEnhanceModel7(cfg)
     elif name == 'ie8':
         model = ImgEnhanceModel8(cfg)
+    elif name == 'utuie':
+        model = UTUIE(cfg)
     elif name == 'seg':
         model = SegModel(cfg)
     else:
