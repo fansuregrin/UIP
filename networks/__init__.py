@@ -17,6 +17,7 @@ from .vit_enhancer import ViTEnhancer1, ViTEnhancer2
 from .vm_unet.vmunet import VMUNet
 from .vg_unet.vgunet import VGUNet
 from .erd import ERD
+from .utuie.net.Ushape_Trans import Generator, Discriminator
 
 
 def create_network(cfg: Dict[str, Any]):
@@ -228,6 +229,10 @@ def create_network(cfg: Dict[str, Any]):
             depths_decoder=cfg['depths_decoder'],
             drop_path_rate=cfg['drop_path_rate']
         )
+    elif name == 'utuie':
+        generator = Generator()
+        discriminator = Discriminator()
+        net = {'G': generator, 'D': discriminator}
     elif name == 'unet':
         net = UNet(
             cfg['input_nc'],
