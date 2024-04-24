@@ -589,9 +589,9 @@ class UTUIE(BaseModel):
         return output
     
     def _set_loss_fn(self):
-        self.criterion_GAN = nn.MSELoss(size_average=False).to(self.device)
-        self.criterion_pixelwise = nn.MSELoss(size_average=False).to(self.device)
-        self.mse_loss_fn  = nn.MSELoss(size_average=False).to(self.device)
+        self.criterion_GAN = nn.MSELoss(reduction='sum').to(self.device)
+        self.criterion_pixelwise = nn.MSELoss(reduction='sum').to(self.device)
+        self.mse_loss_fn  = nn.MSELoss(reduction='sum').to(self.device)
         self.ssim_loss_fn = SSIMLoss(11).to(self.device)
         self.vgg_loss_fn = VGG19_PercepLoss().to(self.device)
         self.lab_loss_fn = lab_Loss().to(self.device)
@@ -866,7 +866,6 @@ class UTUIE(BaseModel):
         
         weights_name = f"{load_prefix}_{epoch}" if load_prefix else f"{epoch}"
         self.load_network_state(f"{weights_name}.pth", 'G')
-        self.load_network_state(f"{weights_name}.pth", 'D')
         result_dir = os.path.join(self.result_dir, test_name, weights_name)
         if os.path.exists(result_dir):
             shutil.rmtree(result_dir)
@@ -883,7 +882,7 @@ class UTUIE(BaseModel):
             img_names = batch['img_name']
             num = len(inp_imgs)
             with torch.no_grad():
-                self.network.eval()
+                self.network['G'].eval()
                 t_start = time.time()
                 pred_imgs = self.network['G'](inp_imgs)[-1]
                 
