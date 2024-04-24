@@ -22,7 +22,11 @@ class VGG19_PercepLoss(nn.Module):
     """
     def __init__(self, _pretrained_=True):
         super(VGG19_PercepLoss, self).__init__()
-        self.vgg = models.vgg19(pretrained=_pretrained_).features
+        if _pretrained_:
+            weights_ = models.VGG19_Weights.DEFAULT
+        else:
+            weights_ = None
+        self.vgg = models.vgg19(weights=weights_).features
         for param in self.vgg.parameters():
             param.requires_grad_(False)
 

@@ -161,8 +161,8 @@ class Generator(nn.Module):
 
 		self.Conv = nn.Conv2d(32, self.out_ch, kernel_size=1, stride=1, padding=0)
 
-		# self.active = torch.nn.Sigmoid()
-		# 
+		self.active = torch.nn.Sigmoid()
+ 
 	def reshape_output(self,x): #将transformer的输出resize为原来的特征图尺寸
 		x = x.view(
 			x.size(0),
@@ -177,13 +177,11 @@ class Generator(nn.Module):
 	def forward(self, x):
 		#print(x.shape)
 
-
 		output=[]
 
 		x_1=self.Maxpool(x)
 		x_2=self.Maxpool(x_1)
 		x_3=self.Maxpool(x_2)
-
 
 		e1 = self.Conv1(x)
 		#print(e1.shape)
@@ -218,9 +216,6 @@ class Generator(nn.Module):
 		#channel-wise transformer-based attention
 		e1,e2,e3,e4,att_weights = self.mtc(e1,e2,e3,e4)
 
-
-
-
 		#spatial-wise transformer-based attention
 		residual=e5
 		#中间的隐变量
@@ -240,8 +235,6 @@ class Generator(nn.Module):
 		#residual是否要加bn和relu？
 		e5=e5+residual
 
-
-
 		d5 = self.Up5(e5)
 		e4_att = self.coatt5(g=d5, x=e4)
 		d5 = torch.cat((e4_att, d5), dim=1)
@@ -249,6 +242,7 @@ class Generator(nn.Module):
 		d5 = self.Up_conv5_1(d5)
 		#256
 		out3=self.feature_to_rgb[3](d5)
+		out3 = self.active(out3)
 		output.append(out3)#32*32orH/8,W/8
 
 		d4 = self.Up4(d5)
@@ -258,6 +252,7 @@ class Generator(nn.Module):
 		d4 = self.Up_conv4_1(d4)
 		#128
 		out2=self.feature_to_rgb[2](d4)
+		out2 = self.active(out2)
 		output.append(out2)#64*64orH/4,W/4
 
 		d3 = self.Up3(d4)
@@ -267,6 +262,7 @@ class Generator(nn.Module):
 		d3 = self.Up_conv3_1(d3)
 		#64
 		out1=self.feature_to_rgb[1](d3)
+		out1 = self.active(out1)
 		output.append(out1)#128#128orH/2,W/2
 
 		d2 = self.Up2(d3)
@@ -276,6 +272,7 @@ class Generator(nn.Module):
 		d2 = self.Up_conv2_1(d2)
 		#32
 		out0=self.feature_to_rgb[0](d2)
+		out0 = self.active(out0)
 		output.append(out0)#256*256
 
 		#out = self.Conv(d2)
