@@ -2,15 +2,15 @@ import os
 import numpy as np
 from PIL import Image
 from torch.utils.data import Dataset, DataLoader
+from torchvision.transforms.functional import to_tensor
 
 from .transform import (
-    get_train_transform,
-    get_val_transform,
-    get_test_transform
+    get_transform
 )
-from ._utils import (
+from .utils import (
     is_image_file,
-    mask_to_one_hot_label
+    mask_to_one_hot_label,
+    white_balance_transform, gamma_correction, histeq
 )
 
 class PairedImgDataset(Dataset):
@@ -122,138 +122,103 @@ class SegDataset(Dataset):
                     img_paths.append(os.path.join(dirpath, filename))
         img_paths.sort()
         return tuple(img_paths)
+
+
+class WaterNetDataset(Dataset):
+    """
+    """
+    def __init__(
+        self,
+        root_dir: str,
+        inp_dir: str,
+        ref_dir: str | None,
+        transforms_ = None):
+        self.root_dir = root_dir
+        if transforms_ is None:
+            self.transforms = get_transform()
+        self.transforms = transforms_
+        self.folder_inp = os.path.join(root_dir, inp_dir)
+        self.inp_img_fps = self._get_img_paths(self.folder_inp)
+        if not ref_dir is None:
+            self.folder_ref = os.path.join(root_dir, ref_dir)
+            self.ref_img_fps = self._get_img_paths(self.folder_ref)
+            assert len(self.inp_img_fps) == len(self.ref_img_fps), \
+                f"{inp_dir} and {ref_dir} must contain the same number of images!"
+        self.length = len(self.inp_img_fps)
+
+    def _get_img_paths(self, dirpath):
+        img_path_list = []
+        for filename in os.listdir(dirpath):
+            if is_image_file(os.path.join(dirpath, filename)):
+                img_path_list.append(os.path.join(dirpath, filename))
+        img_path_list.sort()
+        return img_path_list
     
+    def __getitem__(self, index):
+        inp_img_fp = self.inp_img_fps[index % self.length]
+        pil_img_inp = Image.open(inp_img_fp)
+        img_inp = np.asarray(pil_img_inp, dtype=np.float32) / 255.
+        ret = {}
+        if hasattr(self, 'ref_img_fps'):
+            pil_img_ref = Image.open(self.ref_img_fps[index % self.length])
+            img_ref = np.asarray(pil_img_ref, dtype=np.float32) / 255.
+            transformed = self.transforms(image=img_inp, ref=img_ref)
+            ret['ref'] = transformed['ref']
+        else:
+            transformed = self.transforms(image=img_inp)
+        img_inp = (transformed['imgage'].numpy() * 255).astype(np.uint8)
+        img_inp_wb = to_tensor(white_balance_transform(img_inp))
+        img_inp_gc = to_tensor(gamma_correction(img_inp))
+        img_inp_he = to_tensor(histeq(img_inp))
+        img_name = os.path.basename(inp_img_fp)
+        ret['inp'] = transformed['image']
+        ret['inp_name'] = img_name
+        ret['inp_wb'] = img_inp_wb
+        ret['inp_gc'] = img_inp_gc
+        ret['inp_he'] = img_inp_he
+        return ret
 
-ds_types = ('paired_img', 'single_img', 'seg')
+    def __len__(self):
+        return self.length
 
-def create_train_dataset(name, config):
+ds_types = ('paired_img', 'single_img', 'waternet', 'seg')
+
+def create_dataset(config):
+    name = config.get('type', None)
     assert (name in ds_types),\
         f"The dataset type should be one of <{','.join(ds_types)}>, but got {name}!"
     if name == 'paired_img':
-        train_ds = PairedImgDataset(
+        ds = PairedImgDataset(
             config['root_dir'],
             config['inp_dir'],
             config['ref_dir'],
-            get_train_transform(
-                width=config['width'],
-                height=config['height'],
-                process=config['preprocess'] 
-            )
+            get_transform(config.get('trans_opt', None))
         )
     elif name == 'single_img':
-        train_ds = SingleImgDataset(
+        ds = SingleImgDataset(
             config['root_dir'],
-            get_test_transform(
-                width=config['width'],
-                height=config['height'],
-                process=config['preprocess']
-            )
+            get_transform(config.get('trans_opt', None))
+        )
+    elif name == 'waternet':
+        ds = WaterNetDataset(
+            config['root_dir'],
+            config['inp_dir'],
+            config['ref_dir'],
+            get_transform(config.get('trans_opt', None))
         )
     elif name == 'seg':
-        train_ds = SegDataset(
+        ds = SegDataset(
             config['root_dir'],
             config['image_dir'],
             config['mask_dir'],
             config['color_map'],
-            get_train_transform(
-                width=config['width'],
-                height=config['height'],
-                process=config['preprocess']
-            )
+            get_transform(config.get('trans_opt', None))
         )
-    return train_ds
+    return ds
 
-def create_val_dataset(name, config):
-    assert (name in ds_types),\
-        f"The dataset type should be one of <{','.join(ds_types)}>, but got {name}!"
-    if name == 'paired_img':
-        val_ds = PairedImgDataset(
-            config['root_dir'],
-            config['inp_dir'],
-            config['ref_dir'],
-            get_val_transform(
-                width=config['width'],
-                height=config['height'],
-                process=config['preprocess']
-            )
-        )
-    elif name == 'single_img':
-        val_ds = SingleImgDataset(
-            config['root_dir'],
-            get_test_transform(
-                width=config['width'],
-                height=config['height'],
-                process=config['preprocess']
-            )
-        )
-    elif name == 'seg':
-        val_ds = SegDataset(
-            config['root_dir'],
-            config['image_dir'],
-            config['mask_dir'],
-            config['color_map'],
-            get_val_transform(
-                width=config['width'],
-                height=config['height'],
-                process=config['preprocess']
-            ) 
-        )
-    return val_ds
-
-def create_test_dataset(name, config):
-    assert (name in ds_types),\
-        f"The dataset type should be one of <{','.join(ds_types)}>, but got {name}!"
-    if name == 'paired_img':
-        test_ds = PairedImgDataset(
-            config['root_dir'],
-            config['inp_dir'],
-            config['ref_dir'],
-            get_test_transform(
-                width=config['width'],
-                height=config['height'],
-                process=config['preprocess']
-            )
-        )
-    elif name == 'single_img':
-        test_ds = SingleImgDataset(
-            config['root_dir'],
-            get_test_transform(
-                width=config['width'],
-                height=config['height'],
-                process=config['preprocess']
-            )
-        )
-    elif name == 'seg':
-        test_ds = SegDataset(
-            config['root_dir'],
-            config['image_dir'],
-            config['mask_dir'],
-            config['color_map'],
-            get_test_transform(
-                width=config['width'],
-                height=config['height'],
-                process=config['preprocess']
-            ) 
-        )
-    return test_ds
-
-def create_train_dataloader(dataset, config):
-    train_dl = DataLoader(
+def create_dataloader(dataset, config):
+    dl = DataLoader(
         dataset,
         **config
     )
-    return train_dl
-
-def create_val_dataloader(dataset, config):
-    val_dl = DataLoader(
-        dataset,
-        **config
-    )
-    return val_dl
-
-def create_test_dataloader(dataset, config):
-    test_dl = DataLoader(
-        dataset,
-        **config
-    )
-    return test_dl
+    return dl

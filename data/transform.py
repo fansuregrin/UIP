@@ -1,78 +1,32 @@
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
+from typing import Dict
 
 
-def get_train_transform(width=256, height=256, process='resize'):
-    """Produce transfroms for train set.
-
-    Args:
-        width: image width.
-        height: image height.
-        process: process method, one of ['resize', 'random_crop', 'center_crop']
-    """
-    if process == 'resize':
-        get_size = A.Resize(height, width)
-    elif process == 'random_crop':
-        get_size = A.RandomCrop(height, width)
-    elif process == 'center_crop':
-        get_size = A.CenterCrop(height, width)
-    else:
-        assert f"'{process}' is not supported!"
-    transforms = A.Compose([
-        get_size,
-        A.HorizontalFlip(p=0.5),
-        # A.RandomBrightnessContrast(p=0.2),
-        ToTensorV2()
-    ], additional_targets={'ref':'image'})
-    return transforms
-
-def get_val_transform(width=256, height=256, process='resize'):
-    """Produce transfroms for validation set.
+def get_transform(cfg: Dict | None = None):
+    """Get albumentations transforms.
 
     Args:
-        width: image width.
-        height: image height.
-        process: process method, one of ['resize', 'random_crop', 'center_crop']
+        cfg: configue
     """
-    if process == 'resize':
-        get_size = A.Resize(height, width)
-    elif process == 'random_crop':
-        get_size = A.RandomCrop(height, width)
-    elif process == 'center_crop':
-        get_size = A.CenterCrop(height, width)
-    else:
-        assert f"'{process}' is not supported!"
-    transforms = A.Compose([
-        get_size,
-        ToTensorV2(),
-    ], additional_targets={'ref':'image'})
-    return transforms
-
-def get_test_transform(width=256, height=256, process='resize'):
-    """Produce transfroms for test set.
-
-    Args:
-        width: image width.
-        height: image height.
-        process: process method, one of ['resize', 'random_crop', 'center_crop']
-    """
-    if process == 'resize':
-        get_size = A.Resize(height, width)
-    elif process == 'random_crop':
-        get_size = A.RandomCrop(height, width)
-    elif process == 'center_crop':
-        get_size = A.CenterCrop(height, width)
-    elif process == 'none':
-        get_size = None
-    else:
-        assert f"'{process}' is not supported!"
-    if get_size is None:
-        transforms = A.Compose([
-            ToTensorV2(),
-        ], additional_targets={'ref':'image'})
-    else:
-        transforms = A.Compose([
-            get_size,
-            ToTensorV2(),
-        ], additional_targets={'ref':'image'})
+    if cfg is None:
+        return ToTensorV2()
+    transform_list = []
+    for trans_opt in cfg.get('transforms', []):
+        if trans_opt['name'] == 'resize':
+            transf = A.Resize(trans_opt['height'], trans_opt['width'])
+        elif trans_opt['name'] == 'random_crop':
+            transf = A.RandomCrop(trans_opt['height'], trans_opt['width'])
+        elif trans_opt['name'] == 'center_crop':
+            transf = A.CenterCrop(trans_opt['height'], trans_opt['width'])
+        elif trans_opt['name'] == 'horizontal_flip':
+            transf = A.HorizontalFlip(p=trans_opt['p'])
+        elif trans_opt['name'] == 'to_tensor':
+            transf = ToTensorV2()
+        else:
+            assert False, f"'{trans_opt['name']}' is not supported!"
+        transform_list.append(transf)
+    transforms = A.Compose(
+        transform_list,
+        additional_targets=cfg.get('additional_targets', None))
     return transforms
