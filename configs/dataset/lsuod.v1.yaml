@@ -1,6 +1,9 @@
 test:
   type: 'single_img'
   root_dir: '/DataA/pwz/workshop/Datasets/LSUOD.v1.images'
-  width: 400
-  height: 300
-  preprocess: 'resize'
+  trans_opt:
+    transforms:
+      - name: 'resize'
+        width: 400
+        height: 300
+      - name: 'to_tensor'

@@ -3,6 +3,11 @@ test:
   root_dir: '/DataA/pwz/workshop/Datasets/ocean_ex'
   inp_dir: 'poor'
   ref_dir: 'good'
-  width: 224
-  height: 224
-  preprocess: 'resize'
+  trans_opt:
+    additional_targets:
+      ref: image
+    transforms:
+      - name: 'resize'
+        width: 224
+        height: 224
+      - name: 'to_tensor'

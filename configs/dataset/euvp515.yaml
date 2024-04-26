@@ -3,6 +3,11 @@ test:
   root_dir: '/DataA/pwz/workshop/Datasets/EUVP_Dataset/test_samples'
   inp_dir: 'Inp'
   ref_dir: 'GTr'
-  width: 256
-  height: 256
-  preprocess: 'resize'
+  trans_opt:
+    additional_targets:
+      ref: image
+    transforms:
+      - name: 'resize'
+        width: 256
+        height: 256
+      - name: 'to_tensor'

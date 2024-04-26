@@ -1,6 +1,9 @@
 test:
   type: 'single_img'
   root_dir: '/DataA/pwz/workshop/Datasets/OceanDark'
-  width: 256
-  height: 256
-  preprocess: 'resize'
+  trans_opt:
+    transforms:
+      - name: 'resize'
+        width: 256
+        height: 256
+      - name: 'to_tensor'
