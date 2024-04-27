@@ -7,7 +7,7 @@ from loguru import logger
 
 from models import create_model
 from data import (
-    create_test_dataset, create_test_dataloader
+    create_dataset, create_dataloader
 )
 from utils import (
     LOGURU_FORMAT
@@ -71,14 +71,13 @@ else:
 
 
 # Data pipeline
-test_ds_type = ds_cfg['test'].get('type', None)
-test_ds = create_test_dataset(test_ds_type, ds_cfg['test'])
+test_ds = create_dataset(ds_cfg['test'])
 test_dl_cfg = {
     'batch_size': args.batch_size,
     'shuffle': False,
     'num_workers': 4,
 }
-test_dl = create_test_dataloader(test_ds, test_dl_cfg)
+test_dl = create_dataloader(test_ds, test_dl_cfg)
 
 # Create and initialize model
 model_cfg = {

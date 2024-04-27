@@ -8,8 +8,8 @@ from loguru import logger
 
 from models import create_model
 from data import (
-    create_train_dataset, create_val_dataset,
-    create_train_dataloader, create_val_dataloader
+    create_dataset,
+    create_dataloader
 )
 from utils import (
     seed_everything,
@@ -95,20 +95,20 @@ else:
 
 
 # Data pipeline
-train_ds = create_train_dataset('paired_img', ds_cfg['train'])
+train_ds = create_dataset(ds_cfg['train'])
 train_dl_cfg = {
     'batch_size': args.batch_size,
     'shuffle': True,
     'num_workers': 4,
 }
-train_dl = create_train_dataloader(train_ds, train_dl_cfg)
-val_ds = create_val_dataset('paired_img', ds_cfg['val'])
+train_dl = create_dataloader(train_ds, train_dl_cfg)
+val_ds = create_dataset('paired_img', ds_cfg['val'])
 val_dl_cfg = {
     'batch_size': 4,
     'shuffle': True,
     'num_workers': 4,
 }
-val_dl = create_val_dataloader(val_ds, val_dl_cfg)
+val_dl = create_dataloader(val_ds, val_dl_cfg)
 
 # Create a tensorboard writer
 tensorboard_writer = SummaryWriter(log_dir=tensorboard_log_dir)
