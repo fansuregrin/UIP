@@ -6,9 +6,9 @@ from .ptcolor import rgb2lab
 from .Qnt import quantAB
 
 
-class lab_Loss(nn.Module):
+class LABLoss(nn.Module):
     def __init__(self, alpha=1,weight=1,levels=7,vmin=-80,vmax=80):
-        super(lab_Loss, self).__init__()
+        super(LABLoss, self).__init__()
         self.alpha=alpha
         self.weight=weight
         self.levels=levels

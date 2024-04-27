@@ -4,9 +4,9 @@ import torch.nn as nn
 from .ptcolor import rgb2lch
 
 
-class lch_Loss(nn.Module):
+class LCHLoss(nn.Module):
     def __init__(self, weightC=1,weightH=1,levels=4,eps=0.01,weight=None):
-        super(lch_Loss, self).__init__()
+        super(LCHLoss, self).__init__()
         self.weightC=weightC
         self.weightH=weightH
         self.levels=levels
