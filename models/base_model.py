@@ -1,6 +1,6 @@
 import torch
-from abc import ABC
-from typing import Union, Dict, Any
+from abc import ABC, abstractmethod
+from typing import Dict, Any
 
 from networks import create_network
 
@@ -42,3 +42,51 @@ class BaseModel(ABC):
             self.ckpt_interval = self.cfg['ckpt_interval']
         else:
             assert f"{self.mode} is not supported!"
+
+    @abstractmethod
+    def _set_optimizer(self):
+        pass
+
+    @abstractmethod
+    def _set_lr_scheduler(self):
+        pass
+
+    @abstractmethod
+    def _set_loss_fn(self):
+        pass
+
+    @abstractmethod
+    def load_network_state(self):
+        pass
+
+    @abstractmethod
+    def load_optimizer_state(self):
+        pass
+
+    @abstractmethod
+    def load_lr_scheduler_state(self):
+        pass
+
+    @abstractmethod
+    def train(self):
+        pass
+
+    @abstractmethod
+    def adjust_lr(self):
+        pass
+
+    @abstractmethod
+    def test(self):
+        pass
+
+    @abstractmethod
+    def save_network_weights(self):
+        pass
+
+    @abstractmethod
+    def save_optimizer_state(self):
+        pass
+
+    @abstractmethod
+    def save_lr_scheduler_state(self):
+        pass

@@ -3,35 +3,27 @@ from .img_enhance_model import (
     ImgEnhanceModel3, ImgEnhanceModel4,
     ImgEnhanceModel5, ImgEnhanceModel6,
     ImgEnhanceModel7, ImgEnhanceModel8,
-    UTUIE
 )
+from .utuie_model import UTUIE
 from .seg_model import SegModel
+
+model_mp = {
+    'ie': ImgEnhanceModel,
+    'ie2': ImgEnhanceModel2,
+    'ie3': ImgEnhanceModel3,
+    'ie4': ImgEnhanceModel4,
+    'ie5': ImgEnhanceModel5,
+    'ie6': ImgEnhanceModel6,
+    'ie7': ImgEnhanceModel7,
+    'ie8': ImgEnhanceModel8,
+    'utuie': UTUIE,
+    'seg': SegModel
+}
 
 
 def create_model(name, cfg):
-    if name == 'ie':
-        model = ImgEnhanceModel(cfg)
-    elif name == 'ie2':
-        model = ImgEnhanceModel2(cfg)
-    elif name == 'ie3':
-        model = ImgEnhanceModel3(cfg)
-    elif name == 'ie4':
-        model = ImgEnhanceModel4(cfg)
-    elif name == 'ie5':
-        model = ImgEnhanceModel5(cfg)
-    elif name == 'ie6':
-        model = ImgEnhanceModel6(cfg)
-    elif name == 'ie7':
-        model = ImgEnhanceModel7(cfg)
-    elif name == 'ie8':
-        model = ImgEnhanceModel8(cfg)
-    elif name == 'utuie':
-        model = UTUIE(cfg)
-    elif name == 'seg':
-        model = SegModel(cfg)
-    else:
-        assert f"<{name}> not exist!"
-    return model
+    assert name in model_mp, f"<{name}> not exist!"
+    return model_mp[name](cfg)
 
 
 __all__ = [

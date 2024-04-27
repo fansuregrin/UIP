@@ -222,8 +222,8 @@ class UTUIE(BaseModel):
         self._calculate_metrics(ref_imgs, pred_imgs[-1])
     
     def adjust_lr(self):
-        if self.lr_scheduler is not None:
-            for label in self.lr_scheduler:
+        for label in self.lr_scheduler:
+            if self.lr_scheduler[label] is not None:
                 self.lr_scheduler[label].step()
     
     def write_tensorboard(self, iteration: int):
@@ -269,7 +269,7 @@ class UTUIE(BaseModel):
             self.logger.info("Saved optimizer['{}'] state into {}".format(label, saved_path))
 
     def save_lr_scheduler_state(self, epoch: int, label: str):
-        if not self.lr_scheduler:
+        if self.lr_scheduler[label] is None:
             return
         load_prefix = self.cfg.get('load_prefix', None)
         save_prefix = self.cfg.get('save_prefix', None)
