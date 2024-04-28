@@ -1,5 +1,5 @@
 train:
-  type: 'paired_img'
+  type: 'waternet'
   root_dir: '/DataA/pwz/workshop/Datasets/LSUI/train'
   inp_dir: 'inp'
   ref_dir: 'ref'
@@ -14,7 +14,7 @@ train:
         p: 0.5
       - name: 'to_tensor'
 val:
-  type: 'paired_img'
+  type: 'waternet'
   root_dir: '/DataA/pwz/workshop/Datasets/LSUI/val'
   inp_dir: 'inp'
   ref_dir: 'ref'
@@ -29,19 +29,6 @@ val:
         p: 0.5
       - name: 'to_tensor'
 test:
-  type: 'paired_img'
-  root_dir: '/DataA/pwz/workshop/Datasets/LSUI/test'
-  inp_dir: 'inp'
-  ref_dir: 'ref'
-  trans_opt:
-    additional_targets:
-      ref: image
-    transforms:
-      - name: 'resize'
-        width: 256
-        height: 256
-      - name: 'to_tensor'
-waternet_test:
   type: 'waternet'
   root_dir: '/DataA/pwz/workshop/Datasets/LSUI/test'
   inp_dir: 'inp'
