@@ -235,7 +235,7 @@ def create_network(cfg: Dict[str, Any]):
         discriminator = Discriminator()
         net = {'G': generator, 'D': discriminator}
     elif name == 'waternet':
-        net = WaterNet()
+        net = WaterNet(cfg)
     elif name == 'unet':
         net = UNet(
             cfg['input_nc'],
