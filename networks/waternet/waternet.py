@@ -88,20 +88,26 @@ class WaterNet(nn.Module):
     # torch.Size([16, 3, 112, 112])
     """
 
-    def __init__(self):
+    def __init__(self, cfg):
         super().__init__()
+        self.cfg = cfg
         self.cmg = ConfidenceMapGenerator()
         self.wb_refiner = Refiner()
         self.he_refiner = Refiner()
         self.gc_refiner = Refiner()
+        if self.cfg['use_sigmoid']:
+            self.output = nn.Sigmoid()
 
     def forward(self, x, wb, he, gc):
         wb_cm, he_cm, gc_cm = self.cmg(x, wb, he, gc)
         refined_wb = self.wb_refiner(x, wb)
         refined_he = self.he_refiner(x, he)
         refined_gc = self.gc_refiner(x, gc)
-        return (
+        out = (
             torch.mul(refined_wb, wb_cm)
             + torch.mul(refined_he, he_cm)
             + torch.mul(refined_gc, gc_cm)
         )
+        if self.cfg['use_sigmoid']:
+            out = self.output(out)
+        return out
