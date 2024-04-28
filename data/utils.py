@@ -69,7 +69,7 @@ def white_balance_transform(im_rgb):
         wb[ch, :] = temp
         bottom = min(wb[ch, :])
         top = max(wb[ch, :])
-        wb[ch, :] = (wb[ch, :] - bottom) * 255 / (top - bottom)
+        wb[ch, :] = (wb[ch, :] - bottom) * 255 / ((top - bottom)+1e-9)
 
     if len(im_rgb.shape) == 3:
         outval = np.zeros(shape=im_rgb.shape)
