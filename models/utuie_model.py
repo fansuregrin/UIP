@@ -6,7 +6,7 @@ import torch.optim as optim
 import torch.nn.functional as F
 import cv2
 import numpy as np
-import tqdm
+from tqdm import tqdm
 import time
 from torch import Tensor
 from torch.utils.data import DataLoader

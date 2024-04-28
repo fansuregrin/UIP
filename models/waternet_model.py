@@ -6,7 +6,7 @@ import cv2
 import time
 import shutil
 import numpy as np
-import tqdm
+from tqdm import tqdm
 from torchvision.utils import save_image
 from torch import Tensor
 from torch.utils.data import DataLoader
