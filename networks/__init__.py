@@ -18,6 +18,7 @@ from .vm_unet.vmunet import VMUNet
 from .vg_unet.vgunet import VGUNet
 from .erd import ERD
 from .utuie.net.Ushape_Trans import Generator, Discriminator
+from .waternet.waternet import WaterNet
 
 
 def create_network(cfg: Dict[str, Any]):
@@ -233,6 +234,8 @@ def create_network(cfg: Dict[str, Any]):
         generator = Generator()
         discriminator = Discriminator()
         net = {'G': generator, 'D': discriminator}
+    elif name == 'waternet':
+        net = WaterNet()
     elif name == 'unet':
         net = UNet(
             cfg['input_nc'],
