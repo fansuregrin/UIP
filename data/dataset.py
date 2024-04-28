@@ -172,7 +172,7 @@ class WaterNetDataset(Dataset):
         img_inp_he = to_tensor(histeq(img_inp))
         img_name = os.path.basename(inp_img_fp)
         ret['inp'] = transformed['image']
-        ret['inp_name'] = img_name
+        ret['img_name'] = img_name
         ret['inp_wb'] = img_inp_wb
         ret['inp_gc'] = img_inp_gc
         ret['inp_he'] = img_inp_he
