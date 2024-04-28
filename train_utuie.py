@@ -21,7 +21,7 @@ from utils import (
 parser = argparse.ArgumentParser()
 parser.add_argument("--ds_cfg", type=str, default="configs/dataset/lsui.yaml")
 parser.add_argument("--lr_scheduler_cfg", type=str, default="configs/lr_scheduler/none.yaml")
-parser.add_argument("--net_cfg", type=str, default="configs/network/ce.yaml")
+parser.add_argument("--net_cfg", type=str, default="configs/network/utuie_01.yaml")
 parser.add_argument("--name", type=str, default="experiment", help="name of training process")
 parser.add_argument("--start_epoch", type=int, default=0, help="which epoch to start from")
 parser.add_argument("--start_iteration", type=int, default=0, help="which iteration to start from")
@@ -102,7 +102,7 @@ train_dl_cfg = {
     'num_workers': 4,
 }
 train_dl = create_dataloader(train_ds, train_dl_cfg)
-val_ds = create_dataset('paired_img', ds_cfg['val'])
+val_ds = create_dataset(ds_cfg['val'])
 val_dl_cfg = {
     'batch_size': 4,
     'shuffle': True,
