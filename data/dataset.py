@@ -166,7 +166,7 @@ class WaterNetDataset(Dataset):
             ret['ref'] = transformed['ref']
         else:
             transformed = self.transforms(image=img_inp)
-        img_inp = (transformed['imgage'].numpy() * 255).astype(np.uint8)
+        img_inp = (transformed['image'].numpy() * 255).astype(np.uint8).transpose(1,2,0)
         img_inp_wb = to_tensor(white_balance_transform(img_inp))
         img_inp_gc = to_tensor(gamma_correction(img_inp))
         img_inp_he = to_tensor(histeq(img_inp))
