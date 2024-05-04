@@ -19,6 +19,8 @@ from .vg_unet.vgunet import VGUNet
 from .erd import ERD
 from .utuie.net.Ushape_Trans import Generator, Discriminator
 from .waternet.waternet import WaterNet
+from .ugan import Generator as UGAN_G
+from .ugan import Discriminator as UGAN_D
 
 
 def create_network(cfg: Dict[str, Any]):
@@ -236,6 +238,10 @@ def create_network(cfg: Dict[str, Any]):
         net = {'G': generator, 'D': discriminator}
     elif name == 'waternet':
         net = WaterNet(cfg)
+    elif name == 'ugan':
+        generator = UGAN_G(cfg['channels'], cfg['channels'])
+        discriminator = UGAN_D(cfg['channels'])
+        net = {'G': generator, 'D': discriminator}
     elif name == 'unet':
         net = UNet(
             cfg['input_nc'],

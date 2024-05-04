@@ -6,6 +6,7 @@ from .img_enhance_model import (
 )
 from .utuie_model import UTUIE
 from .waternet_model import WaterNetModel
+from .ugan_model import UGAN_Model
 from .seg_model import SegModel
 
 model_mp = {
@@ -19,7 +20,8 @@ model_mp = {
     'ie8': ImgEnhanceModel8,
     'utuie': UTUIE,
     'seg': SegModel,
-    'waternet': WaterNetModel
+    'waternet': WaterNetModel,
+    'ugan': UGAN_Model
 }
 
 
