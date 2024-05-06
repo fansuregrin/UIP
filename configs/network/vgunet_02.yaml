@@ -1,0 +1,7 @@
+name: 'vgunet'
+patch_size: 4
+in_chans: 3
+out_chans: 3
+depths: [4, 4, 4, 4]
+depths_decoder: [4, 4, 4, 4]
+drop_path_rate: 0.1
