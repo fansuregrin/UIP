@@ -1,0 +1,39 @@
+train:
+  type: 'waternet'
+  root_dir: '/DataA/pwz/workshop/Datasets/EUVP/paired'
+  inp_dir: 'trainA'
+  ref_dir: 'trainB'
+  trans_opt:
+    additional_targets:
+      ref: image
+    transforms:
+      - name: 'resize'
+        width: 256
+        height: 256
+      - name: 'to_tensor'
+val:
+  type: 'waternet'
+  root_dir: '/DataA/pwz/workshop/Datasets/EUVP/paired'
+  inp_dir: 'trainA'
+  ref_dir: 'trainB'
+  trans_opt:
+    additional_targets:
+      ref: image
+    transforms:
+      - name: 'resize'
+        width: 256
+        height: 256
+      - name: 'to_tensor'
+test:
+  type: 'waternet'
+  root_dir: '/DataA/pwz/workshop/Datasets/EUVP_Dataset/test_samples'
+  inp_dir: 'Inp'
+  ref_dir: 'GTr'
+  trans_opt:
+    additional_targets:
+      ref: image
+    transforms:
+      - name: 'resize'
+        width: 256
+        height: 256
+      - name: 'to_tensor'

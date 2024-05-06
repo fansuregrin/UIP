@@ -1,0 +1,17 @@
+train: &train
+  type: 'waternet'
+  root_dir: '/DataA/pwz/workshop/Datasets/UIEB-Li'
+  inp_dir: 'raw-890'
+  ref_dir: 'reference-890'
+  trans_opt:
+    additional_targets:
+      ref: image
+    transforms:
+      - name: 'resize'
+        width: 256
+        height: 256
+      - name: 'to_tensor'
+val:
+  <<: *train
+test:
+  <<: *train
