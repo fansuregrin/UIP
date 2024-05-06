@@ -21,6 +21,7 @@ from .utuie.net.Ushape_Trans import Generator, Discriminator
 from .waternet.waternet import WaterNet
 from .ugan import Generator as UGAN_G
 from .ugan import Discriminator as UGAN_D
+from .ultralight_vmunet import UltraLight_VM_UNet
 
 
 def create_network(cfg: Dict[str, Any]):
@@ -213,6 +214,14 @@ def create_network(cfg: Dict[str, Any]):
             depths=cfg['depths'],
             depths_decoder=cfg['depths_decoder'],
             drop_path_rate=cfg['drop_path_rate']
+        )
+    elif name == 'ultralight_vmunet':
+        net = UltraLight_VM_UNet(
+            num_classes=cfg['num_classes'],
+            input_channels=cfg['input_channels'],
+            c_list=cfg['c_list'],
+            split_att=cfg['split_att'],
+            bridge=cfg['bridge']
         )
     elif name == 'vgunet':
         net = VGUNet(
