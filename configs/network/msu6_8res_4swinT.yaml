@@ -1,0 +1,5 @@
+name: 'mimo_swinT_unet6'
+img_size: 256
+num_res: 8
+num_swinT: 4
+fused_window_process: true
