@@ -15,7 +15,7 @@ from .mimo_swinT_unet import (
 )
 from .vit_enhancer import ViTEnhancer1, ViTEnhancer2
 from .vm_unet.vmunet import VMUNet
-from .vg_unet import VGUNet, VGUNet2, VGUNet3
+from .vg_unet import VGUNet, VGUNet2, VGUNet3, VGUNet4
 from .erd import ERD
 from .utuie.net.Ushape_Trans import Generator, Discriminator
 from .waternet.waternet import WaterNet
@@ -257,6 +257,15 @@ def create_network(cfg: Dict[str, Any]):
         )
     elif name == 'vgunet3':
         net = VGUNet3(
+            patch_size=cfg['patch_size'],
+            in_chans=cfg['in_chans'],
+            out_chans=cfg['out_chans'],
+            depths=cfg['depths'],
+            depths_decoder=cfg['depths_decoder'],
+            drop_path_rate=cfg['drop_path_rate']
+        )
+    elif name == 'vgunet4':
+        net = VGUNet4(
             patch_size=cfg['patch_size'],
             in_chans=cfg['in_chans'],
             out_chans=cfg['out_chans'],
