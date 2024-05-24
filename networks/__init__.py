@@ -22,6 +22,7 @@ from .waternet.waternet import WaterNet
 from .ugan import Generator as UGAN_G
 from .ugan import Discriminator as UGAN_D
 from .ultralight_vmunet import UltraLight_VM_UNet
+from .uvm_net import UVM_Net
 
 
 def create_network(cfg: Dict[str, Any]):
@@ -236,6 +237,13 @@ def create_network(cfg: Dict[str, Any]):
             c_list=cfg['c_list'],
             split_att=cfg['split_att'],
             bridge=cfg['bridge']
+        )
+    elif name == 'uvm_net':
+        net = UVM_Net(
+            in_channels=cfg['in_channels'],
+            out_channels=cfg['out_channels'],
+            base_channels=cfg['base_channels'],
+            bilinear=cfg['bilinear']
         )
     elif name == 'vgunet':
         net = VGUNet(
