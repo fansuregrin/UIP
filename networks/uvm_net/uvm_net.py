@@ -22,6 +22,7 @@ class UVM_Net(nn.Module):
         self.up3 = Up(self.base_ch*4, self.base_ch*2 // factor, bilinear)
         self.up4 = Up(self.base_ch*2, self.base_ch, bilinear)
         self.outc = OutConv(self.base_ch, self.out_ch)
+        self.output = nn.Sigmoid()
 
     def forward(self, inp):
         x = inp
@@ -35,4 +36,5 @@ class UVM_Net(nn.Module):
         x = self.up3(x, x2)
         x = self.up4(x, x1)
         x = self.outc(x) + inp
+        x = self.output(x)
         return x
