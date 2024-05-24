@@ -2,8 +2,8 @@ import torch.nn as nn
 from einops import rearrange
 from typing import Union
 
-from .swin_transformer.swin_transformer import SwinTransformerBlock
-from .cbam import ChannelAttention, CBAMBlock, SpatialAttention
+from networks.swin_transformer.swin_transformer import SwinTransformerBlock
+from .conv_att import ChannelAttention, SpatialAttention
 from .resnet import ResnetBlock
 
 
@@ -75,8 +75,8 @@ class ERD(nn.Module):
                  n_swinT: int = 1,
                  wrpm_kernel_size: int = 7,
                  wrpm_padding_size: int = 3,
-                 fmsm_kernel_size: int = 7,
-                 fmsm_padding_size: int = 3,
+                 ftm_kernel_size: int = 7,
+                 ftm_padding_size: int = 3,
                  padding_type: str = 'reflect',
                  use_dropout: bool = False,
                  use_ca: bool = True,
@@ -96,8 +96,8 @@ class ERD(nn.Module):
             n_swinT: Number of swinTransformer within a downsample block.
             wrpm_kernel_size: kernel size of conv in `WRPM`.
             wrpm_padding_size: padding size in `WRPM`.
-            fmsm_kernel_size: kernel size of conv in `FMSM`.
-            fmsm_padding_size: padding size in `FMSM`.
+            ftm_kernel_size: kernel size of conv in `FTM`.
+            ftm_padding_size: padding size in `FTM`.
             padding_type: Type of padding layer in Residual Block.
             use_dropout: Whether to use dropout.
             use_ca: Whether to use `FECAM` in down-sampling.
@@ -126,14 +126,14 @@ class ERD(nn.Module):
             )
         self.dm = nn.Sequential(*dm)
         
-        # High-level Features Residual Learning Module (HFRLM)
-        hfrlm = []
+        # Residual Module
+        blocks = []
         mult = 2 ** n_down
         for i in range(n_blocks):
-            hfrlm.append(
+            blocks.append(
                 ResnetBlock(ngf * mult, padding_type=padding_type, norm_layer=norm_layer,
                             use_dropout=use_dropout, use_bias=use_bias))
-        self.hfrlm = nn.Sequential(*hfrlm)
+        self.rfrm = nn.Sequential(*blocks)
         
         # Up-sampling
         um = []
@@ -144,14 +144,12 @@ class ERD(nn.Module):
                          use_dropout=use_dropout))
         self.um = nn.Sequential(*um)
 
-        # Feature Map Smoothing Module (FMSM) and Sigmoid Activation Layer
-        self.fmsm = nn.Sequential(
-            nn.ReflectionPad2d(fmsm_padding_size),
-            nn.Conv2d(ngf, output_nc, kernel_size=fmsm_kernel_size, padding=0),
+        # Feature Tuning Module (FTM)
+        self.ftm = nn.Sequential(
+            nn.ReflectionPad2d(ftm_padding_size),
+            nn.Conv2d(ngf, output_nc, kernel_size=ftm_kernel_size, padding=0),
+            nn.Sigmoid()
         )
-        
-        # output layer
-        self.output = nn.Sigmoid()
     
     def _get_norm_layer(self, name = None):
         if name is None:
@@ -186,13 +184,12 @@ class ERD(nn.Module):
 
         return nn.Sequential(*wrpm)
 
-    def _up(self, in_channels, out_channels, use_att=False, use_dropout=False, dropout_rate=0.5):
+    def _up(self, in_channels, out_channels, use_dropout=False, dropout_rate=0.5):
         """Up-sampling Block.
 
         Args:
             in_channels: Number of channels of input features.
             out_channels: Number of channels of output features.
-            use_att: Whether to use attention.
             use_dropout: Whether to use dropout.
             dropout_rate: Probability of dropout layer.
         """
@@ -203,8 +200,6 @@ class ERD(nn.Module):
         ]
         if use_dropout:
             layers.append(nn.Dropout(dropout_rate))
-        if use_att:
-            layers.append(CBAMBlock(out_channels))
         return nn.Sequential(*layers)
 
     def forward(self, input):
@@ -215,9 +210,8 @@ class ERD(nn.Module):
         """
         out = self.wrpm(input)
         out = self.dm(out)
-        out = self.hfrlm(out)
+        out = self.rfrm(out)
         out = self.um(out)
-        out = self.fmsm(out)
-        out = self.output(out)
+        out = self.ftm(out)
         
         return out
