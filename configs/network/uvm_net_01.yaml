@@ -1,0 +1,5 @@
+name: 'uvm_net'
+in_channels: 3
+out_channels: 3
+base_channels: 3
+bilinear: true
