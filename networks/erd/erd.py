@@ -140,7 +140,7 @@ class ERD(nn.Module):
         for i in range(n_down):
             mult = 2 ** (n_down - i)
             um.append(
-                self._up(ngf * mult, int(ngf * mult / 2), use_att=False,
+                self._up(ngf * mult, int(ngf * mult / 2),
                          use_dropout=use_dropout))
         self.um = nn.Sequential(*um)
 
