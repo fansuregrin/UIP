@@ -9,7 +9,7 @@ from .transform import (
 )
 from .utils import (
     is_image_file,
-    mask_to_one_hot_label,
+    mask_to_one_hot_label, mask_to_label,
     white_balance_transform, gamma_correction, histeq
 )
 

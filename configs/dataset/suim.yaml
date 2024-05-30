@@ -4,14 +4,30 @@ train:
   image_dir: 'images'
   mask_dir: 'masks'
   color_map:
-    '000000': 'BW'  # Background (waterbody), black
-    '0000ff': 'HD'  # Human divers, blue
-    '00ff00': 'PF'  # Aquatic plants and sea-grass, green
-    '00ffff': 'WR'  # Wrecks and ruins, sky
-    'ff0000': 'RO'  # Robots (AUVs/ROVs/instruments), red
-    'ff00ff': 'RI'  # Reefs and invertebrates, pink
-    'ffff00': 'FV'  # Fish and vertebrates, yellow
-    'ffffff': 'SR'  # Sea-floor and rocks, white
+    '000000':
+      name: 'BW'  # Background (waterbody), black
+      id: 0
+    '0000ff':
+      name: 'HD'  # Human divers, blue
+      id: 1
+    '00ff00':
+      name: 'PF'  # Aquatic plants and sea-grass, green
+      id: 2
+    '00ffff':
+      name: 'WR'  # Wrecks and ruins, sky
+      id: 3
+    'ff0000':
+      name: 'RO'  # Robots (AUVs/ROVs/instruments), red
+      id: 4
+    'ff00ff':
+      name: 'RI'  # Reefs and invertebrates, pink
+      id: 5
+    'ffff00':
+      name: 'FV'  # Fish and vertebrates, yellow
+      id: 6
+    'ffffff':
+      name: 'SR'  # Sea-floor and rocks, white
+      id: 7
   trans_opt:
     additional_targets:
       mask: image
@@ -28,14 +44,30 @@ val:
   image_dir: 'images'
   mask_dir: 'masks'
   color_map:
-    '000000': 'BW'  # Background (waterbody), black
-    '0000ff': 'HD'  # Human divers, blue
-    '00ff00': 'PF'  # Aquatic plants and sea-grass, green
-    '00ffff': 'WR'  # Wrecks and ruins, sky
-    'ff0000': 'RO'  # Robots (AUVs/ROVs/instruments), red
-    'ff00ff': 'RI'  # Reefs and invertebrates, pink
-    'ffff00': 'FV'  # Fish and vertebrates, yellow
-    'ffffff': 'SR'  # Sea-floor and rocks, white
+    '000000':
+      name: 'BW'  # Background (waterbody), black
+      id: 0
+    '0000ff':
+      name: 'HD'  # Human divers, blue
+      id: 1
+    '00ff00':
+      name: 'PF'  # Aquatic plants and sea-grass, green
+      id: 2
+    '00ffff':
+      name: 'WR'  # Wrecks and ruins, sky
+      id: 3
+    'ff0000':
+      name: 'RO'  # Robots (AUVs/ROVs/instruments), red
+      id: 4
+    'ff00ff':
+      name: 'RI'  # Reefs and invertebrates, pink
+      id: 5
+    'ffff00':
+      name: 'FV'  # Fish and vertebrates, yellow
+      id: 6
+    'ffffff':
+      name: 'SR'  # Sea-floor and rocks, white
+      id: 7
   trans_opt:
     additional_targets:
       mask: image
@@ -52,14 +84,30 @@ test:
   image_dir: 'images'
   mask_dir: 'masks'
   color_map:
-    '000000': 'BW'  # Background (waterbody), black
-    '0000ff': 'HD'  # Human divers, blue
-    '00ff00': 'PF'  # Aquatic plants and sea-grass, green
-    '00ffff': 'WR'  # Wrecks and ruins, sky
-    'ff0000': 'RO'  # Robots (AUVs/ROVs/instruments), red
-    'ff00ff': 'RI'  # Reefs and invertebrates, pink
-    'ffff00': 'FV'  # Fish and vertebrates, yellow
-    'ffffff': 'SR'  # Sea-floor and rocks, white
+    '000000':
+      name: 'BW'  # Background (waterbody), black
+      id: 0
+    '0000ff':
+      name: 'HD'  # Human divers, blue
+      id: 1
+    '00ff00':
+      name: 'PF'  # Aquatic plants and sea-grass, green
+      id: 2
+    '00ffff':
+      name: 'WR'  # Wrecks and ruins, sky
+      id: 3
+    'ff0000':
+      name: 'RO'  # Robots (AUVs/ROVs/instruments), red
+      id: 4
+    'ff00ff':
+      name: 'RI'  # Reefs and invertebrates, pink
+      id: 5
+    'ffff00':
+      name: 'FV'  # Fish and vertebrates, yellow
+      id: 6
+    'ffffff':
+      name: 'SR'  # Sea-floor and rocks, white
+      id: 7
   trans_opt:
     additional_targets:
       mask: image

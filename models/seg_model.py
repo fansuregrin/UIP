@@ -8,11 +8,14 @@ import os
 import numpy as np
 import time
 import cv2
+import shutil
+from tqdm import tqdm
 from torchvision.utils import draw_segmentation_masks
+from kornia.losses import DiceLoss
+from kornia.metrics import mean_iou
 from typing import Dict
 
 from .base_model import BaseModel
-from losses import DiceLoss
 
 
 class SegModel(BaseModel):
@@ -33,8 +36,9 @@ class SegModel(BaseModel):
             self.val_loss = {}
             self.train_metrics = {}
             self.val_metrics = {}
-            self.lambda_ce = cfg['lambda_ce']
-            self.lambda_dice = cfg['lambda_dice']
+        elif self.mode == 'test':
+            self.checkpoint_dir = cfg['checkpoint_dir']
+            self.result_dir = cfg['result_dir']
 
     def _set_optimizer(self):
         params = self.network.parameters()
@@ -58,7 +62,11 @@ class SegModel(BaseModel):
 
     def _set_loss_fn(self):
         self.ce_loss_fn = nn.CrossEntropyLoss().to(self.device)
-        self.dice_loss_fn = DiceLoss('micro').to(self.device)
+        self.dice_loss_fn = DiceLoss().to(self.device)
+        self.l1_loss_fn = nn.L1Loss().to(device=self.device)
+        self.lambda_l1 = self.cfg['lambda_l1']
+        self.lambda_ce = self.cfg['lambda_ce']
+        self.lambda_dice = self.cfg['lambda_dice']
 
     def load_network_state(self, state_name: str):
         state_path = os.path.join(self.checkpoint_dir, 'network', state_name)
@@ -131,11 +139,8 @@ class SegModel(BaseModel):
         self.optimizer.zero_grad()
         self.network.train()
         pred_masks = self.network(inp_imgs)
-        self.train_metrics['mIoU'] = self.calc_mIOU(pred_masks, ref_masks, len(self.color_map))
-        self.train_loss['ce'] = self.ce_loss_fn(pred_masks, ref_masks)
-        self.train_loss['dice'] = self.dice_loss_fn(pred_masks, ref_masks)
-        self.train_loss['total'] = self.train_loss['ce'] * self.lambda_ce +\
-                                   self.train_loss['dice'] * self.lambda_dice
+        self._calculate_loss(ref_masks, pred_masks)
+        self._calculate_metrics(ref_masks, pred_masks)
         self.train_loss['total'].backward()
         self.optimizer.step()
     
@@ -200,79 +205,110 @@ class SegModel(BaseModel):
         if self.logger:
             self.logger.info("Saved lr_shceduler state into {}".format(saved_path))
 
+    def _calculate_loss(self, ref_masks, pred_masks, train=True):
+        loss = self.train_loss if train else self.val_loss
+        loss['l1'] = self.l1_loss_fn(pred_masks, ref_masks)
+        loss['ce'] = self.ce_loss_fn(pred_masks, ref_masks)
+        loss['dice'] = self.dice_loss_fn(
+            F.softmax(pred_masks, dim=1),
+            F.softmax(ref_masks, dim=1).argmax(dim=1))
+        loss['total'] = loss['l1'] * self.lambda_l1 +\
+                        loss['ce'] * self.lambda_ce +\
+                        loss['dice'] * self.lambda_dice
+        
+    def _calculate_metrics(self, ref_masks, pred_masks, train=True):
+        metrics = self.train_metrics if train else self.val_metrics
+        metrics['mIoU'] = mean_iou(
+            F.softmax(pred_masks, dim=1).argmax(1),
+            F.softmax(ref_masks, dim=1).argmax(1),
+            len(self.color_map)).mean()
+
     def validate_one_batch(self, input_: Dict, iteration):
         inp_imgs = input_['img'].to(self.device)
         ref_masks = input_['mask'].to(self.device)
         with torch.no_grad():
             pred_masks = self.network(inp_imgs)
-
-            self.val_loss['ce'] = self.ce_loss_fn(pred_masks, ref_masks)
-            self.val_loss['dice'] = self.dice_loss_fn(pred_masks, ref_masks)
-            self.val_loss['total'] = self.val_loss['ce'] * self.lambda_ce +\
-                                     self.val_loss['dice'] * self.lambda_dice
-            self.val_metrics['mIoU'] = self.calc_mIOU(pred_masks, ref_masks, len(self.color_map))
-            
+            self._calculate_loss(ref_masks, pred_masks, train=False)
+            self._calculate_metrics(ref_masks, pred_masks, train=False)
             full_img = self._gen_comparison_img(inp_imgs.cpu(), pred_masks.cpu(), ref_masks.cpu())
             full_img = cv2.cvtColor(full_img, cv2.COLOR_RGB2BGR)
             cv2.imwrite(os.path.join(self.sample_dir, f'{iteration:06d}.png'), full_img)
     
-    def test(self, input_: Dict):
-        inp_imgs = input_['img'].to(self.device)
-        ref_masks = input_['mask'].to(self.device)
-        num = len(inp_imgs)
-        with torch.no_grad():
-            self.network.eval()
-            t_start = time.time()
-            pred_masks = self.network(inp_imgs)
-            t_elapse_avg = (time.time() - t_start) / num
-        full_img = self._gen_comparison_img(inp_imgs.cpu(), pred_masks.cpu(), ref_masks.cpu())
+    def test(self, test_dl: DataLoader, epoch: int, test_name: str, load_prefix=None):
+        assert self.mode == 'test', f"The mode must be 'test', but got {self.mode}"
+        
+        weights_name = f"{load_prefix}_{epoch}" if load_prefix else f"{epoch}"
+        self.load_network_state(f"{weights_name}.pth")
+        result_dir = os.path.join(self.result_dir, test_name, weights_name)
+        if os.path.exists(result_dir):
+            shutil.rmtree(result_dir)
+        os.makedirs(result_dir)
+        os.makedirs(os.path.join(result_dir, 'paired'))
 
-        return full_img, t_elapse_avg
+        t_elapse_list = []
+        idx = 1
+        for batch in tqdm(test_dl):
+            inp_imgs = batch['inp'].to(self.device)
+            ref_masks = batch['mask'].to(self.device) if 'mask' in batch else None
+            img_names = batch['img_name']
+            num = len(inp_imgs)
+            with torch.no_grad():
+                self.network.eval()
+                t_start = time.time()
+                pred_masks = self.network(inp_imgs)
+                
+                # average inference time consumed by one batch
+                t_elapse_avg = (time.time() - t_start) / num
+                t_elapse_list.append(t_elapse_avg)
+
+                # record visual results and metrics values
+                full_img = self._gen_comparison_img(inp_imgs, pred_masks, ref_masks)
+                full_img = cv2.cvtColor(full_img, cv2.COLOR_RGB2BGR)
+                cv2.imwrite(os.path.join(result_dir, 'paired', f'{idx:06d}.png'), full_img)
+                with open(os.path.join(result_dir, 'paired', f"{idx:06d}.txt"), 'w') as f:
+                    f.write('\n'.join(img_names))
+            idx += 1
+
+        frame_rate = 1 / (sum(t_elapse_list) / len(t_elapse_list))
+        if self.logger:
+            self.logger.info(
+                '[epoch: {:d}] [framte_rate: {:.1f} fps]'.format(
+                    epoch, frame_rate
+                )
+            )
     
-    def _gen_comparison_img(self, imgs: Tensor, pred_masks: Tensor, ref_masks):
+    def _gen_comparison_img(self, imgs: Tensor, pred_masks: Tensor, ref_masks = None):
         colors = ['#'+c for c in sorted(self.color_map.keys())]
         imgs_with_pred_mask = []
         imgs_with_ref_mask = []
-        for img, pred_mask, ref_mask in zip(imgs, pred_masks, ref_masks):
-            img = (img * 255).to(torch.uint8)
-            normalized_pred_mask = F.softmax(pred_mask, dim=0)
-            boolean_pred_mask = torch.stack(
-                [(normalized_pred_mask.argmax(0) == i) for i in range(len(self.color_map))]
-            )
-            img_with_pred_mask = draw_segmentation_masks(img, boolean_pred_mask, alpha=0.5, colors=colors)
-            imgs_with_pred_mask.append(img_with_pred_mask.cpu().numpy().transpose(1,2,0))
+        if ref_masks is not None:
+            for img, pred_mask, ref_mask in zip(imgs, pred_masks, ref_masks):
+                img = (img * 255).to(torch.uint8)
+                normalized_pred_mask = F.softmax(pred_mask, dim=0)
+                boolean_pred_mask = torch.stack(
+                    [(normalized_pred_mask.argmax(0) == i) for i in range(len(self.color_map))]
+                )
+                img_with_pred_mask = draw_segmentation_masks(img, boolean_pred_mask, alpha=0.5, colors=colors)
+                imgs_with_pred_mask.append(img_with_pred_mask.cpu().numpy().transpose(1,2,0))
 
-            normalized_ref_mask = F.softmax(ref_mask, dim=0)
-            boolean_ref_mask = torch.stack(
-                [(normalized_ref_mask.argmax(0) == i) for i in range(len(self.color_map))]
-            )
-            img_with_ref_mask = draw_segmentation_masks(img, boolean_ref_mask, alpha=0.5, colors=colors)
-            imgs_with_ref_mask.append(img_with_ref_mask.cpu().numpy().transpose(1,2,0))
-        imgs_with_pred_mask = np.concatenate(imgs_with_pred_mask, axis=1)
-        imgs_with_ref_mask = np.concatenate(imgs_with_ref_mask, axis=1)
-        full_img = np.concatenate((imgs_with_pred_mask, imgs_with_ref_mask), axis=0)
-
+                normalized_ref_mask = F.softmax(ref_mask, dim=0)
+                boolean_ref_mask = torch.stack(
+                    [(normalized_ref_mask.argmax(0) == i) for i in range(len(self.color_map))]
+                )
+                img_with_ref_mask = draw_segmentation_masks(img, boolean_ref_mask, alpha=0.5, colors=colors)
+                imgs_with_ref_mask.append(img_with_ref_mask.cpu().numpy().transpose(1,2,0))
+            imgs_with_pred_mask = np.concatenate(imgs_with_pred_mask, axis=1)
+            imgs_with_ref_mask = np.concatenate(imgs_with_ref_mask, axis=1)
+            full_img = np.concatenate((imgs_with_pred_mask, imgs_with_ref_mask), axis=0)
+        else:
+            for img, pred_mask in zip(imgs, pred_masks):
+                img = (img * 255).to(torch.uint8)
+                normalized_pred_mask = F.softmax(pred_mask, dim=0)
+                boolean_pred_mask = torch.stack(
+                    [(normalized_pred_mask.argmax(0) == i) for i in range(len(self.color_map))]
+                )
+                img_with_pred_mask = draw_segmentation_masks(img, boolean_pred_mask, alpha=0.5, colors=colors)
+                imgs_with_pred_mask.append(img_with_pred_mask.cpu().numpy().transpose(1,2,0))
+            imgs_with_pred_mask = np.concatenate(imgs_with_pred_mask, axis=1)
+            full_img = img_with_pred_mask
         return full_img
-    
-    def calc_mIOU(self, pred, label, num_classes):
-        pred = F.softmax(pred, dim=1)
-        pred = pred.argmax(1).squeeze(1)
-        label = label.argmax(1).squeeze(1)
-        iou_list = list()
-        present_iou_list = list()
-
-        pred = pred.view(-1)
-        label = label.view(-1)
-        for sem_class in range(num_classes):
-            pred_inds = (pred == sem_class)
-            target_inds = (label == sem_class)
-            if target_inds.long().sum().item() == 0:
-                iou_now = float('nan')
-            else: 
-                intersection_now = (pred_inds[target_inds]).long().sum().item()
-                union_now = pred_inds.long().sum().item() +\
-                      target_inds.long().sum().item() - intersection_now
-                iou_now = float(intersection_now) / float(union_now)
-                present_iou_list.append(iou_now)
-            iou_list.append(iou_now)
-        return np.mean(present_iou_list)

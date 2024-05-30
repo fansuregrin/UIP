@@ -124,6 +124,17 @@ def mask_to_one_hot_label(
     
     return label
 
+def mask_to_label(mask, color_map):
+    h, w = mask.shape[-2], mask.shape[-1]
+    label = torch.zeros((h, w), dtype=torch.int64)
+    for h_idx in range(h):
+        for w_idx in range(w):
+            color = rgb_to_hex(mask[:, h_idx, w_idx])
+            if color in color_map:
+                label[h_idx, w_idx] = color_map[color]['id']
+            else:
+                label[h_idx, w_idx] = 0
+    return label
 
 def hex_to_rgb(hex_str: str) -> Tuple[int]:
     """Convert hex color string in RGB mode to integer tuple.
@@ -137,3 +148,6 @@ def hex_to_rgb(hex_str: str) -> Tuple[int]:
         rgb.append(decimal)
   
     return tuple(rgb)
+
+def rgb_to_hex(rgb: Tuple[int]):
+    return ''.join('{:02x}'.format(val) for val in rgb)
