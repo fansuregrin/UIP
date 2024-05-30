@@ -1,9 +1,8 @@
-default: &default
-  root_dir: ''
+train:
+  type: 'seg'
+  root_dir: '/DataA/pwz/workshop/Datasets/SUIM/train'
   image_dir: 'images'
   mask_dir: 'masks'
-  width: 256
-  height: 256
   color_map:
     '000000': 'BW'  # Background (waterbody), black
     '0000ff': 'HD'  # Human divers, blue
@@ -13,12 +12,59 @@ default: &default
     'ff00ff': 'RI'  # Reefs and invertebrates, pink
     'ffff00': 'FV'  # Fish and vertebrates, yellow
     'ffffff': 'SR'  # Sea-floor and rocks, white
-train:
-  root_dir: '/DataA/pwz/workshop/Datasets/SUIM/train'
-  <<: *default
+  trans_opt:
+    additional_targets:
+      mask: image
+    transforms:
+      - name: 'resize'
+        width: 256
+        height: 256
+      - name: 'horizontal_flip'
+        p: 0.5
+      - name: 'to_tensor'
 val:
+  type: 'seg'
   root_dir: '/DataA/pwz/workshop/Datasets/SUIM/val'
-  <<: *default
+  image_dir: 'images'
+  mask_dir: 'masks'
+  color_map:
+    '000000': 'BW'  # Background (waterbody), black
+    '0000ff': 'HD'  # Human divers, blue
+    '00ff00': 'PF'  # Aquatic plants and sea-grass, green
+    '00ffff': 'WR'  # Wrecks and ruins, sky
+    'ff0000': 'RO'  # Robots (AUVs/ROVs/instruments), red
+    'ff00ff': 'RI'  # Reefs and invertebrates, pink
+    'ffff00': 'FV'  # Fish and vertebrates, yellow
+    'ffffff': 'SR'  # Sea-floor and rocks, white
+  trans_opt:
+    additional_targets:
+      mask: image
+    transforms:
+      - name: 'resize'
+        width: 256
+        height: 256
+      - name: 'horizontal_flip'
+        p: 0.5
+      - name: 'to_tensor'
 test:
+  type: 'seg'
   root_dir: '/DataA/pwz/workshop/Datasets/SUIM/test'
-  <<: *default
+  image_dir: 'images'
+  mask_dir: 'masks'
+  color_map:
+    '000000': 'BW'  # Background (waterbody), black
+    '0000ff': 'HD'  # Human divers, blue
+    '00ff00': 'PF'  # Aquatic plants and sea-grass, green
+    '00ffff': 'WR'  # Wrecks and ruins, sky
+    'ff0000': 'RO'  # Robots (AUVs/ROVs/instruments), red
+    'ff00ff': 'RI'  # Reefs and invertebrates, pink
+    'ffff00': 'FV'  # Fish and vertebrates, yellow
+    'ffffff': 'SR'  # Sea-floor and rocks, white
+  trans_opt:
+    additional_targets:
+      mask: image
+    transforms:
+      - name: 'resize'
+        width: 256
+        height: 256
+      - name: 'to_tensor'

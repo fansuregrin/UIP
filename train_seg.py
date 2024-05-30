@@ -7,10 +7,7 @@ from torch.utils.tensorboard import SummaryWriter
 from loguru import logger
 
 from models import create_model
-from data import (
-    create_train_dataset, create_val_dataset,
-    create_train_dataloader, create_val_dataloader
-)
+from data import create_dataloader, create_dataset
 from utils import (
     seed_everything,
     LOGURU_FORMAT
@@ -25,6 +22,8 @@ parser.add_argument("--net_cfg", type=str, default="configs/network/fcn.yaml")
 parser.add_argument("--name", type=str, default="experiment", help="name of training process")
 parser.add_argument("--start_epoch", type=int, default=0, help="which epoch to start from")
 parser.add_argument("--start_iteration", type=int, default=0, help="which iteration to start from")
+parser.add_argument("--load_prefix", type=str, default='weights', help="the prefix string of the filename of the weights to be loaded")
+parser.add_argument("--save_prefix", type=str, default='', help="the prefix string of the filename that needs to save the weights")
 parser.add_argument("--num_epochs", type=int, default=50, help="number of epochs for training")
 parser.add_argument("--batch_size", type=int, default=8, help="size of batches")
 parser.add_argument("--seed", type=int, default=2023, help="lucky random seed")
@@ -89,20 +88,20 @@ else:
 
 
 # Data pipeline
-train_ds = create_train_dataset('seg', ds_cfg['train'])
+train_ds = create_dataset(ds_cfg['train'])
 train_dl_cfg = {
     'batch_size': args.batch_size,
     'shuffle': True,
     'num_workers': 4,
 }
-train_dl = create_train_dataloader(train_ds, train_dl_cfg)
-val_ds = create_val_dataset('seg', ds_cfg['val'])
+train_dl = create_dataloader(train_ds, train_dl_cfg)
+val_ds = create_dataset(ds_cfg['val'])
 val_dl_cfg = {
     'batch_size': 4,
     'shuffle': True,
     'num_workers': 4,
 }
-val_dl = create_val_dataloader(val_ds, val_dl_cfg)
+val_dl = create_dataloader(val_ds, val_dl_cfg)
 
 # Create a tensorboard writer
 tensorboard_writer = SummaryWriter(log_dir=tensorboard_log_dir)
@@ -118,7 +117,11 @@ model_cfg = {
     'name': args.name,
     'start_epoch': args.start_epoch,
     'start_iteration': args.start_iteration,
+    'load_prefix': args.load_prefix,
+    'save_prefix': args.save_prefix,
     'num_epochs': args.num_epochs,
+    'val_interval': args.val_interval,
+    'ckpt_interval': args.ckpt_interval,
     'optimizer': {
         'name': args.optimizer,
         'lr': args.lr,
@@ -130,29 +133,4 @@ model_cfg = {
     'lambda_dice': args.lambda_dice,
 }
 model = create_model(model_v, model_cfg)
-
-# Training pipeline
-iteration_index = args.start_iteration
-val_interval = args.val_interval
-ckpt_interval = args.ckpt_interval
-for epoch in range(args.start_epoch, args.start_epoch + args.num_epochs):
-    for i, batch in enumerate(train_dl):
-        # train one batch
-        model.train(batch)
-        # validation
-        if (iteration_index % val_interval == 0) or (i == len(train_dl)-1):
-            val_batch = next(iter(val_dl))
-            model.validate(val_batch, iteration_index)
-            model.write_tensorboard(iteration_index)
-      
-            logger.info("[iteration: {:d}, lr: {:f}] [Epoch {:d}/{:d}, batch {:d}/{:d}] [train_loss: {:.3f}, val_loss: {:.3f}]".format(
-                iteration_index, model.optimizer.param_groups[0]['lr'],
-                epoch, args.start_epoch + args.num_epochs-1, i, len(train_dl)-1,
-                model.train_loss['ce'].item(), model.val_loss['ce'].item()
-            ))
-        iteration_index += 1
-    # adjust lr
-    model.adjust_lr()
-    # save model weights
-    if (epoch % ckpt_interval == 0) or (epoch == args.num_epochs-1):
-        model.save_model_weights(epoch)
+model.train(train_dl, val_dl)

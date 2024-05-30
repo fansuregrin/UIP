@@ -3,6 +3,7 @@ import torch.optim as optim
 import torch.nn as nn
 from torch import Tensor
 import torch.nn.functional as F
+from torch.utils.data import DataLoader
 import os
 import numpy as np
 import time
@@ -19,10 +20,13 @@ class SegModel(BaseModel):
         super().__init__(cfg)
         self.color_map = cfg['color_map']
         if self.mode == 'train':
+            os.makedirs(os.path.join(self.checkpoint_dir, 'network'), exist_ok=True)
             # Set optimizers
             self._set_optimizer()
+            os.makedirs(os.path.join(self.checkpoint_dir, 'optimizer'), exist_ok=True)
             # Set lr_scheduler
             self._set_lr_scheduler()
+            os.makedirs(os.path.join(self.checkpoint_dir, 'lr_scheduler'), exist_ok=True)
             # Set Loss function
             self._set_loss_fn()
             self.train_loss = {}
@@ -56,7 +60,72 @@ class SegModel(BaseModel):
         self.ce_loss_fn = nn.CrossEntropyLoss().to(self.device)
         self.dice_loss_fn = DiceLoss('micro').to(self.device)
 
-    def train(self, input_: Dict):
+    def load_network_state(self, state_name: str):
+        state_path = os.path.join(self.checkpoint_dir, 'network', state_name)
+        self.network.load_state_dict(torch.load(state_path))
+        if self.logger:
+            self.logger.info('Loaded network weights from {}.'.format(
+                state_path
+            ))
+
+    def load_optimizer_state(self, state_name: str):
+        state_path = os.path.join(self.checkpoint_dir, 'optimizer', state_name)
+        self.optimizer.load_state_dict(torch.load(state_path))
+        if self.logger:
+            self.logger.info('Loaded optimizer state from {}.'.format(
+                state_path
+            ))
+
+    def load_lr_scheduler_state(self, state_name: str):
+        state_path = os.path.join(self.checkpoint_dir, 'lr_scheduler', state_name)
+        self.lr_scheduler.load_state_dict(torch.load(state_path))
+        if self.logger:
+            self.logger.info('Loaded lr_scheduler state from {}.'.format(
+                state_path
+            ))
+
+    def train(self, train_dl: DataLoader, val_dl: DataLoader):
+        assert self.mode == 'train', f"The mode must be 'train', but got {self.mode}"
+        if self.start_epoch > 0:
+            load_prefix = self.cfg.get('load_prefix', None)
+            if load_prefix:
+                state_name = f'{load_prefix}_{self.start_epoch-1}.pth'
+                self.load_network_state(state_name)
+                self.load_optimizer_state(state_name)
+                self.load_lr_scheduler_state(state_name)
+            else:
+                state_name = f'{self.start_epoch-1}.pth'
+                self.load_network_state(state_name)
+                self.load_optimizer_state(state_name)
+                self.load_lr_scheduler_state(state_name)
+        iteration_index = self.start_iteration
+        for epoch in range(self.start_epoch, self.start_epoch + self.num_epochs):
+            for i, batch in enumerate(train_dl):
+                # train one batch
+                self.train_one_batch(batch)
+                # validation
+                if (iteration_index % self.val_interval == 0) or (i == len(train_dl)-1):
+                    val_batch = next(iter(val_dl))
+                    self.validate_one_batch(val_batch, iteration_index)
+                    self.write_tensorboard(iteration_index)
+            
+                    if self.logger:
+                        self.logger.info(
+                            "[iteration: {:d}, lr: {:f}] [Epoch {:d}/{:d}, batch {:d}/{:d}] [train_loss: {:.3f}, val_loss: {:.3f}]".format(
+                            iteration_index, self.optimizer.param_groups[0]['lr'],
+                            epoch, self.start_epoch + self.num_epochs-1, i, len(train_dl)-1,
+                            self.train_loss['ce'].item(), self.val_loss['ce'].item()
+                        ))
+                iteration_index += 1
+            # adjust lr
+            self.adjust_lr()
+            # save model weights
+            if (epoch % self.ckpt_interval == 0) or (epoch == self.start_epoch + self.num_epochs-1):
+                self.save_network_weights(epoch)
+                self.save_optimizer_state(epoch)
+                self.save_lr_scheduler_state(epoch)
+
+    def train_one_batch(self, input_: Dict):
         inp_imgs = input_['img'].to(self.device)
         ref_masks = input_['mask'].to(self.device)
         self.optimizer.zero_grad()
@@ -90,13 +159,48 @@ class SegModel(BaseModel):
                                        },
                                        iteration)
     
-    def save_model_weights(self, epoch):
-        saved_path = os.path.join(self.checkpoint_dir, "weights_{:d}.pth".format(epoch))
+    def save_network_weights(self, epoch: int):
+        load_prefix = self.cfg.get('load_prefix', None)
+        save_prefix = self.cfg.get('save_prefix', None)
+        if not save_prefix:
+            save_prefix = load_prefix
+        if save_prefix:
+            saved_path = os.path.join(self.checkpoint_dir, 'network', "{}_{:d}.pth".format(save_prefix, epoch))
+        else:
+            saved_path = os.path.join(self.checkpoint_dir, 'network', "{:d}.pth".format(epoch))
         torch.save(self.network.state_dict(), saved_path)
         if self.logger:
-            self.logger.info("Saved model weights into {}".format(saved_path))
+            self.logger.info("Saved network weights into {}".format(saved_path))
 
-    def validate(self, input_: Dict, iteration):
+    def save_optimizer_state(self, epoch: int):
+        load_prefix = self.cfg.get('load_prefix', None)
+        save_prefix = self.cfg.get('save_prefix', None)
+        if not save_prefix:
+            save_prefix = load_prefix
+        if save_prefix:
+            saved_path = os.path.join(self.checkpoint_dir, 'optimizer', "{}_{:d}.pth".format(save_prefix, epoch))
+        else:
+            saved_path = os.path.join(self.checkpoint_dir, 'optimizer', "{:d}.pth".format(epoch))
+        torch.save(self.optimizer.state_dict(), saved_path)
+        if self.logger:
+            self.logger.info("Saved optimizer state into {}".format(saved_path))
+
+    def save_lr_scheduler_state(self, epoch: int):
+        if not self.lr_scheduler:
+            return
+        load_prefix = self.cfg.get('load_prefix', None)
+        save_prefix = self.cfg.get('save_prefix', None)
+        if not save_prefix:
+            save_prefix = load_prefix
+        if save_prefix:
+            saved_path = os.path.join(self.checkpoint_dir, 'lr_scheduler', "{}_{:d}.pth".format(save_prefix, epoch))
+        else:
+            saved_path = os.path.join(self.checkpoint_dir, 'lr_scheduler', "{:d}.pth".format(epoch))
+        torch.save(self.lr_scheduler.state_dict(), saved_path)
+        if self.logger:
+            self.logger.info("Saved lr_shceduler state into {}".format(saved_path))
+
+    def validate_one_batch(self, input_: Dict, iteration):
         inp_imgs = input_['img'].to(self.device)
         ref_masks = input_['mask'].to(self.device)
         with torch.no_grad():

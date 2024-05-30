@@ -105,7 +105,7 @@ class SegDataset(Dataset):
         mask = np.asarray(mask, dtype=np.uint8)
         transformed = self.transforms(image=image, mask=mask)
         img = transformed['image']
-        mask = transformed['mask'].permute(2, 0, 1).contiguous()
+        mask = transformed['mask'].contiguous()
         mask = mask_to_one_hot_label(mask, self.color_map)
         img_name = os.path.basename(image_path)
         
