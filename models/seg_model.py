@@ -248,7 +248,7 @@ class SegModel(BaseModel):
         t_elapse_list = []
         idx = 1
         for batch in tqdm(test_dl):
-            inp_imgs = batch['inp'].to(self.device)
+            inp_imgs = batch['img'].to(self.device)
             ref_masks = batch['mask'].to(self.device) if 'mask' in batch else None
             img_names = batch['img_name']
             num = len(inp_imgs)
@@ -281,7 +281,10 @@ class SegModel(BaseModel):
         colors = ['#'+c for c in sorted(self.color_map.keys())]
         imgs_with_pred_mask = []
         imgs_with_ref_mask = []
+        imgs = imgs.to(torch.device('cpu'))
+        pred_masks = pred_masks.to(torch.device('cpu'))
         if ref_masks is not None:
+            ref_masks = ref_masks.to(torch.device('cpu'))
             for img, pred_mask, ref_mask in zip(imgs, pred_masks, ref_masks):
                 img = (img * 255).to(torch.uint8)
                 normalized_pred_mask = F.softmax(pred_mask, dim=0)
