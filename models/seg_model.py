@@ -63,8 +63,6 @@ class SegModel(BaseModel):
     def _set_loss_fn(self):
         self.ce_loss_fn = nn.CrossEntropyLoss().to(self.device)
         self.dice_loss_fn = DiceLoss().to(self.device)
-        self.l1_loss_fn = nn.L1Loss().to(device=self.device)
-        self.lambda_l1 = self.cfg['lambda_l1']
         self.lambda_ce = self.cfg['lambda_ce']
         self.lambda_dice = self.cfg['lambda_dice']
 
@@ -207,14 +205,11 @@ class SegModel(BaseModel):
 
     def _calculate_loss(self, ref_masks, pred_masks, train=True):
         loss = self.train_loss if train else self.val_loss
-        loss['l1'] = self.l1_loss_fn(pred_masks,
-            F.one_hot(ref_masks, len(self.classes)).permute(0,3,1,2))
         loss['ce'] = self.ce_loss_fn(pred_masks, ref_masks)
         loss['dice'] = self.dice_loss_fn(
             F.softmax(pred_masks, dim=1),
             ref_masks)
-        loss['total'] = loss['l1'] * self.lambda_l1 +\
-                        loss['ce'] * self.lambda_ce +\
+        loss['total'] = loss['ce'] * self.lambda_ce +\
                         loss['dice'] * self.lambda_dice
         
     def _calculate_metrics(self, ref_masks, pred_masks, train=True):
@@ -247,6 +242,7 @@ class SegModel(BaseModel):
         os.makedirs(os.path.join(result_dir, 'paired'))
 
         t_elapse_list = []
+        mIoU_list = []
         idx = 1
         for batch in tqdm(test_dl):
             inp_imgs = batch['img'].to(self.device)
@@ -262,6 +258,11 @@ class SegModel(BaseModel):
                 t_elapse_avg = (time.time() - t_start) / num
                 t_elapse_list.append(t_elapse_avg)
 
+                # calculate mIoU
+                mIoU = mean_iou(F.softmax(pred_masks, dim=1).argmax(1),
+                    ref_masks, len(self.classes)).mean()
+                mIoU_list.append(mIoU.cpu().item())
+
                 # record visual results and metrics values
                 full_img = self._gen_comparison_img(inp_imgs, pred_masks, ref_masks)
                 full_img = cv2.cvtColor(full_img, cv2.COLOR_RGB2BGR)
@@ -271,10 +272,11 @@ class SegModel(BaseModel):
             idx += 1
 
         frame_rate = 1 / (sum(t_elapse_list) / len(t_elapse_list))
+        mIoU = sum(mIoU_list) / len(mIoU_list)
         if self.logger:
             self.logger.info(
-                '[epoch: {:d}] [framte_rate: {:.1f} fps]'.format(
-                    epoch, frame_rate
+                '[epoch: {:d}] [framte_rate: {:.1f} fps, mIoU: {:.3f}]'.format(
+                    epoch, frame_rate, mIoU
                 )
             )
     

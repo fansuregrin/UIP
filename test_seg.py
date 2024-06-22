@@ -88,7 +88,7 @@ model_cfg = {
     'checkpoint_dir': checkpoint_dir,
     'name': args.name,
     'net_cfg': net_cfg,
-    'color_map': ds_cfg['test']['color_map'],
+    'classes': ds_cfg['classes'],
 }
 model = create_model(model_v, model_cfg)
 
