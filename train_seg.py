@@ -129,7 +129,7 @@ model_cfg = {
     },
     'lr_scheduler': lr_scheduler_cfg,
     'net_cfg': net_cfg,
-    'color_map': ds_cfg['train']['color_map'],
+    'classes': ds_cfg['classes'],
     'lambda_l1': args.lambda_l1,
     'lambda_ce': args.lambda_ce,
     'lambda_dice': args.lambda_dice,

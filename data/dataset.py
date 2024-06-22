@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import torch
 from PIL import Image
 from torch.utils.data import Dataset, DataLoader
 from torchvision.transforms.functional import to_tensor
@@ -86,11 +87,10 @@ class SingleImgDataset(Dataset):
 
 
 class SegDataset(Dataset):
-    def __init__(self, root_dir, image_dir, mask_dir, color_map, transforms_):
+    def __init__(self, root_dir, image_dir, mask_dir, transforms_):
         self.image_dir = os.path.join(root_dir, image_dir)
         self.mask_dir = os.path.join(root_dir, mask_dir)
         self.transforms = transforms_
-        self.color_map = color_map
         self.image_paths = self._get_img_paths(self.image_dir)
         self.mask_paths = self._get_img_paths(self.mask_dir)
         self.images_len = len(self.image_paths)
@@ -105,8 +105,7 @@ class SegDataset(Dataset):
         mask = np.asarray(mask, dtype=np.uint8)
         transformed = self.transforms(image=image, mask=mask)
         img = transformed['image']
-        mask = transformed['mask'].contiguous()
-        mask = mask_to_one_hot_label(mask, self.color_map)
+        mask = transformed['mask'].squeeze(0).to(torch.int64)
         img_name = os.path.basename(image_path)
         
         return {'img': img, 'mask': mask, 'img_name': img_name}
@@ -211,7 +210,6 @@ def create_dataset(config):
             config['root_dir'],
             config['image_dir'],
             config['mask_dir'],
-            config['color_map'],
             get_transform(config.get('trans_opt', None))
         )
     return ds

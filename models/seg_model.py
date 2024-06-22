@@ -21,7 +21,7 @@ from .base_model import BaseModel
 class SegModel(BaseModel):
     def __init__(self, cfg: Dict):
         super().__init__(cfg)
-        self.color_map = cfg['color_map']
+        self.classes = cfg['classes']
         if self.mode == 'train':
             os.makedirs(os.path.join(self.checkpoint_dir, 'network'), exist_ok=True)
             # Set optimizers
@@ -207,11 +207,12 @@ class SegModel(BaseModel):
 
     def _calculate_loss(self, ref_masks, pred_masks, train=True):
         loss = self.train_loss if train else self.val_loss
-        loss['l1'] = self.l1_loss_fn(pred_masks, ref_masks)
+        loss['l1'] = self.l1_loss_fn(pred_masks,
+            F.one_hot(ref_masks, len(self.classes)).permute(0,3,1,2))
         loss['ce'] = self.ce_loss_fn(pred_masks, ref_masks)
         loss['dice'] = self.dice_loss_fn(
             F.softmax(pred_masks, dim=1),
-            F.softmax(ref_masks, dim=1).argmax(dim=1))
+            ref_masks)
         loss['total'] = loss['l1'] * self.lambda_l1 +\
                         loss['ce'] * self.lambda_ce +\
                         loss['dice'] * self.lambda_dice
@@ -220,8 +221,8 @@ class SegModel(BaseModel):
         metrics = self.train_metrics if train else self.val_metrics
         metrics['mIoU'] = mean_iou(
             F.softmax(pred_masks, dim=1).argmax(1),
-            F.softmax(ref_masks, dim=1).argmax(1),
-            len(self.color_map)).mean()
+            ref_masks,
+            len(self.classes)).mean()
 
     def validate_one_batch(self, input_: Dict, iteration):
         inp_imgs = input_['img'].to(self.device)
@@ -278,7 +279,7 @@ class SegModel(BaseModel):
             )
     
     def _gen_comparison_img(self, imgs: Tensor, pred_masks: Tensor, ref_masks = None):
-        colors = ['#'+c for c in sorted(self.color_map.keys())]
+        colors = ['#'+clz['color'] for clz in self.classes]
         imgs_with_pred_mask = []
         imgs_with_ref_mask = []
         imgs = imgs.to(torch.device('cpu'))
@@ -289,15 +290,16 @@ class SegModel(BaseModel):
                 img = (img * 255).to(torch.uint8)
                 normalized_pred_mask = F.softmax(pred_mask, dim=0)
                 boolean_pred_mask = torch.stack(
-                    [(normalized_pred_mask.argmax(0) == i) for i in range(len(self.color_map))]
+                    [(normalized_pred_mask.argmax(0) == i) for i in range(len(self.classes))]
                 )
                 img_with_pred_mask = draw_segmentation_masks(img, boolean_pred_mask, alpha=0.5, colors=colors)
                 imgs_with_pred_mask.append(img_with_pred_mask.cpu().numpy().transpose(1,2,0))
 
-                normalized_ref_mask = F.softmax(ref_mask, dim=0)
-                boolean_ref_mask = torch.stack(
-                    [(normalized_ref_mask.argmax(0) == i) for i in range(len(self.color_map))]
-                )
+                # normalized_ref_mask = F.softmax(ref_mask, dim=0)
+                # boolean_ref_mask = torch.stack(
+                #     [(normalized_ref_mask.argmax(0) == i) for i in range(len(self.classes))]
+                # )
+                boolean_ref_mask = torch.stack([ref_mask == i for i in range(len(self.classes))])
                 img_with_ref_mask = draw_segmentation_masks(img, boolean_ref_mask, alpha=0.5, colors=colors)
                 imgs_with_ref_mask.append(img_with_ref_mask.cpu().numpy().transpose(1,2,0))
             imgs_with_pred_mask = np.concatenate(imgs_with_pred_mask, axis=1)
@@ -308,7 +310,7 @@ class SegModel(BaseModel):
                 img = (img * 255).to(torch.uint8)
                 normalized_pred_mask = F.softmax(pred_mask, dim=0)
                 boolean_pred_mask = torch.stack(
-                    [(normalized_pred_mask.argmax(0) == i) for i in range(len(self.color_map))]
+                    [(normalized_pred_mask.argmax(0) == i) for i in range(len(self.classes))]
                 )
                 img_with_pred_mask = draw_segmentation_masks(img, boolean_pred_mask, alpha=0.5, colors=colors)
                 imgs_with_pred_mask.append(img_with_pred_mask.cpu().numpy().transpose(1,2,0))
