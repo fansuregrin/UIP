@@ -1,0 +1,4 @@
+name: 'segnet'
+in_chn: 3
+out_chn: 8
+BN_momentum: 0.5

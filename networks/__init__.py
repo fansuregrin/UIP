@@ -23,6 +23,7 @@ from .ugan import Generator as UGAN_G
 from .ugan import Discriminator as UGAN_D
 from .ultralight_vmunet import UltraLight_VM_UNet
 from .uvm_net import UVM_Net
+from .segnet import SegNet
 
 
 def create_network(cfg: Dict[str, Any]):
@@ -304,6 +305,12 @@ def create_network(cfg: Dict[str, Any]):
             cfg['in_nc'],
             cfg['nc'],
             cfg['out_nc']
+        )
+    elif name == 'segnet':
+        net = SegNet(
+            cfg['in_chn'],
+            cfg['out_chn'],
+            cfg['BN_momentum']
         )
     else:
         assert f"<{name}> is not supported!"
