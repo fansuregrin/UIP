@@ -29,6 +29,7 @@ parser.add_argument("--batch_size", type=int, default=8, help="size of batches")
 parser.add_argument("--seed", type=int, default=2023, help="lucky random seed")
 parser.add_argument("--optimizer", type=str, default='adam', help='which optimizer to use')
 parser.add_argument("--lr", type=float, default=0.001, help="learning rate for optimizer")
+parser.add_argument("--weight_decay", type=float, default=0, help='weight_decay for optimizer')
 parser.add_argument("--lambda_ce", type=float, default=1.0)
 parser.add_argument("--lambda_dice", type=float, default=1.0)
 parser.add_argument("--val_interval", type=int, default=100, help="how many iterations to validate the model")
@@ -125,6 +126,7 @@ model_cfg = {
     'optimizer': {
         'name': args.optimizer,
         'lr': args.lr,
+        'weight_decay': args.weight_decay
     },
     'lr_scheduler': lr_scheduler_cfg,
     'net_cfg': net_cfg,

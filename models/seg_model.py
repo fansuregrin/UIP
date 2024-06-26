@@ -44,9 +44,11 @@ class SegModel(BaseModel):
         params = self.network.parameters()
         optimizer = self.cfg['optimizer']
         if optimizer['name'] == 'adam':
-            self.optimizer = torch.optim.Adam(params, lr=optimizer['lr'])
+            self.optimizer = torch.optim.Adam(
+                params, lr=optimizer['lr'], weight_decay=optimizer['weight_decay'])
         elif optimizer['name'] == 'sgd':
-            self.optimizer = torch.optim.SGD(params, lr=optimizer['lr'])
+            self.optimizer = torch.optim.SGD(
+                params, lr=optimizer['lr'], weight_decay=optimizer['weight_decay'])
         else:
             assert f"<{optimizer['name']}> is supported!"
 
