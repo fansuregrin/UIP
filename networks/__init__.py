@@ -7,6 +7,7 @@ from .ranet import (
 from .ege_unet import EGEUNet
 from .fcn import FCN
 from .unet import UNet
+from .deeplab import DeepLabV3
 from .four_net import FourNet
 from .mimo_unet import MIMOUNet
 from .mimo_swinT_unet import (
@@ -212,6 +213,11 @@ def create_network(cfg: Dict[str, Any]):
         )
     elif name == 'fcn':
         net = FCN(
+            num_classes = cfg['num_classes'],
+            backbone = cfg['backbone']
+        )
+    elif name == 'deeplabv3':
+        net = DeepLabV3(
             num_classes = cfg['num_classes'],
             backbone = cfg['backbone']
         )
