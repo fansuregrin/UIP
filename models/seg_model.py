@@ -217,7 +217,7 @@ class SegModel(BaseModel):
         metrics['mIoU'] = mean_iou(
             F.softmax(pred_masks, dim=1).argmax(1),
             ref_masks,
-            len(self.classes)).mean()
+            len(self.classes)).mean(1).mean(0)
 
     def validate_one_batch(self, input_: Dict, iteration):
         inp_imgs = input_['img'].to(self.device)
@@ -260,7 +260,7 @@ class SegModel(BaseModel):
 
                 # calculate mIoU
                 mIoU = mean_iou(F.softmax(pred_masks, dim=1).argmax(1),
-                    ref_masks, len(self.classes)).mean()
+                    ref_masks, len(self.classes)).mean(1).mean(0)
                 mIoU_list.append(mIoU.cpu().item())
 
                 # record visual results and metrics values
