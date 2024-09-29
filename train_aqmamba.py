@@ -34,6 +34,9 @@ parser.add_argument("--lr", type=float, default=0.001, help="learning rate for o
 parser.add_argument("--val_interval", type=int, default=100, help="how many iterations to validate the model")
 parser.add_argument("--ckpt_interval", type=int, default=5, help="how many epochs to save checkpoint")
 parser.add_argument("--l1_reduction", type=str, default='mean')
+parser.add_argument("--use_contrast_loss", action='store_true', help="whether use contrast loss function")
+parser.add_argument("--lambda_mae", type=float, default=1.0, help="weight of MAE loss")
+parser.add_argument("--lambda_ssim", type=float, default=1.0, help="weight of SSIM loss")
 args = parser.parse_args()
 
 model_v = 'aqmamba'
@@ -130,6 +133,9 @@ model_cfg = {
     'lr_scheduler': lr_scheduler_cfg,
     'net_cfg': net_cfg,
     'l1_reduction': args.l1_reduction,
+    'lambda_mae': args.lambda_mae,
+    'lambda_ssim': args.lambda_ssim,
+    'use_contrast_loss': args.use_contrast_loss
 }
 model = create_model(model_v, model_cfg)
 

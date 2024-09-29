@@ -552,18 +552,30 @@ class ImgEnhanceModel8(ImgEnhanceModel7):
 class AquaticMamba(ImgEnhanceModel):
     def _set_loss_fn(self):
         self.mae_loss_fn = nn.L1Loss(reduction=self.cfg['l1_reduction']).to(self.device)
-        self.contrast_loss_fn = ContrastLoss()
+        self.ssim_win_size = self.cfg.get('ssim_win_size', 11)
+        self.ssim_loss_fn = SSIMLoss(self.ssim_win_size).to(self.device)
+        self.use_contrast_loss = self.cfg.get('use_constrast_loss', False)
+        if self.use_contrast_loss:
+            self.contrast_loss_fn = ContrastLoss().to(self.device)
+        self.lambda_mae  = self.cfg.get('lambda_mae', 1.0)
+        self.lambda_ssim = self.cfg.get('lambda_ssim', 1.0)
 
     def _calculate_loss(self, ref_imgs, pred_imgs, train=True):
         loss = self.train_loss if train else self.val_loss
         loss['mae'] = self.mae_loss_fn(pred_imgs, ref_imgs)
-        loss['contrast'] = self.contrast_loss_fn(pred_imgs, ref_imgs)
-        loss['total'] = loss['mae'] + loss['contrast']
+        loss['ssim'] = self.ssim_loss_fn(pred_imgs, ref_imgs)
+        loss['total'] = self.lambda_mae * loss['mae'] + self.lambda_ssim * loss['ssim']
+        if self.use_contrast_loss:
+            loss['contrast'] = self.contrast_loss_fn(pred_imgs, ref_imgs)
+            loss['total'] += loss['contrast']
 
     def _set_optimizer(self):
-        params = [
-            {'params': self.network.parameters()}, 
-            {'params': self.contrast_loss_fn.parameters()} ]
+        if self.use_contrast_loss:
+            params = [
+                {'params': self.network.parameters()}, 
+                {'params': self.contrast_loss_fn.parameters()} ]
+        else:
+            params = self.network.parameters()
         optimizer = self.cfg['optimizer']
         if optimizer['name'] == 'adam':
             self.optimizer = torch.optim.Adam(params, lr=optimizer['lr'])

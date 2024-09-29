@@ -208,7 +208,7 @@ class CDAM(nn.Module):
         B, C, H, W = x.shape
         
         # extract local luminance
-        lumi = self.conv1(x)
+        lumi = self.conv1(x) # (B, C, H, W)
         
         # calculate local contrast
         unfolded_ = F.unfold(lumi, self.win_size, stride=1, padding=(self.win_size-1)//2)\
