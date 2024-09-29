@@ -21,7 +21,7 @@ from .base_model import BaseModel
 from losses import (
     L1CharbonnierLoss, FourDomainLoss, 
     EdgeLoss, FourDomainLoss2, FourDomainLoss3,
-    S3IM
+    S3IM, ContrastLoss
 )
 
 
@@ -32,14 +32,14 @@ class ImgEnhanceModel(BaseModel):
         super().__init__(cfg)
         if self.mode == 'train':
             os.makedirs(os.path.join(self.checkpoint_dir, 'network'), exist_ok=True)
+            # Set Loss function
+            self._set_loss_fn()
             # Set optimizers
             self._set_optimizer()
             os.makedirs(os.path.join(self.checkpoint_dir, 'optimizer'), exist_ok=True)
             # Set lr_scheduler
             self._set_lr_scheduler()
             os.makedirs(os.path.join(self.checkpoint_dir, 'lr_scheduler'), exist_ok=True)
-            # Set Loss function
-            self._set_loss_fn()
             self.train_loss = {}
             self.val_loss = {}
             self.train_metrics = {}
@@ -549,3 +549,25 @@ class ImgEnhanceModel8(ImgEnhanceModel7):
         self.lambda_ssim = self.cfg['lambda_ssim']
         self.lambda_four = self.cfg['lambda_four']
 
+class AquaticMamba(ImgEnhanceModel):
+    def _set_loss_fn(self):
+        self.mae_loss_fn = nn.L1Loss(reduction=self.cfg['l1_reduction']).to(self.device)
+        self.contrast_loss_fn = ContrastLoss()
+
+    def _calculate_loss(self, ref_imgs, pred_imgs, train=True):
+        loss = self.train_loss if train else self.val_loss
+        loss['mae'] = self.mae_loss_fn(pred_imgs, ref_imgs)
+        loss['contrast'] = self.contrast_loss_fn(pred_imgs, ref_imgs)
+        loss['total'] = loss['mae'] + loss['contrast']
+
+    def _set_optimizer(self):
+        params = [
+            {'params': self.network.parameters()}, 
+            {'params': self.contrast_loss_fn.parameters()} ]
+        optimizer = self.cfg['optimizer']
+        if optimizer['name'] == 'adam':
+            self.optimizer = torch.optim.Adam(params, lr=optimizer['lr'])
+        elif optimizer['name'] == 'sgd':
+            self.optimizer = torch.optim.SGD(params, lr=optimizer['lr'])
+        else:
+            assert f"<{optimizer['name']}> is supported!"

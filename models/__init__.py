@@ -3,6 +3,7 @@ from .img_enhance_model import (
     ImgEnhanceModel3, ImgEnhanceModel4,
     ImgEnhanceModel5, ImgEnhanceModel6,
     ImgEnhanceModel7, ImgEnhanceModel8,
+    AquaticMamba
 )
 from .utuie_model import UTUIE
 from .waternet_model import WaterNetModel
@@ -18,10 +19,11 @@ model_mp = {
     'ie6': ImgEnhanceModel6,
     'ie7': ImgEnhanceModel7,
     'ie8': ImgEnhanceModel8,
+    'aqmamba': AquaticMamba,
     'utuie': UTUIE,
     'seg': SegModel,
     'waternet': WaterNetModel,
-    'ugan': UGAN_Model
+    'ugan': UGAN_Model,
 }
 
 
