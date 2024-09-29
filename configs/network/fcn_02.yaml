@@ -1,0 +1,3 @@
+name: fcn
+num_classes: 8
+backbone: resnet101
