@@ -8,6 +8,7 @@ from timm.models.layers import trunc_normal_,to_2tuple
 
 from .gma import GmaBlock
 from .vss import VssBlock
+from utils import get_norm_layer
 
 
 class PatchEmbed2D(nn.Module):
@@ -229,7 +230,7 @@ class AquaticMambaNet(nn.Module):
                  depths_down=[2, 2, 6, 2], depths_up=[2, 6, 2, 2],
                  dims_down=[40, 80, 160, 320], dims_up=[320, 160, 80, 40],
                  d_state=16, drop_rate=0.0, attn_drop_rate=0.0, drop_path_rate=0.1,
-                 norm_layer=nn.LayerNorm, patch_norm=True, **kwargs):
+                 norm_layer: str='layer_norm', patch_norm=True, **kwargs):
         super().__init__()
         self.out_chans = out_chans
         assert len(depths_down) == len(depths_up),\
@@ -241,6 +242,8 @@ class AquaticMambaNet(nn.Module):
             dims_up = [int(dims_up * 2 ** i_layer) for i_layer in range(self.num_layers-1,-1,-1)]
         assert len(dims_down) == len(dims_up),\
             'The number of upsampling and downsampling dims must be the same'
+        
+        norm_layer = get_norm_layer(norm_layer)
         
         self.embed_dim = dims_down[0]
         self.num_features = dims_down[-1]
@@ -330,7 +333,7 @@ class AquaticMambaNet(nn.Module):
             skip_list.append(x)
             x = self.enhance_layers_down[i](x)
             if self.use_cdam:
-                x = self.cdam_list[i](x.permute(0,2,3,1))
+                x = self.cdam_list[i](x.permute(0,3,1,2)).permute(0,2,3,1)
             if i < self.num_layers - 1:
                 x = self.downsample_layers[i](x)
         

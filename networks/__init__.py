@@ -25,6 +25,7 @@ from .ugan import Discriminator as UGAN_D
 from .ultralight_vmunet import UltraLight_VM_UNet
 from .uvm_net import UVM_Net
 from .segnet import SegNet
+from .aquatic_mamba import AquaticMambaNet
 
 
 def create_network(cfg: Dict[str, Any]):
@@ -317,6 +318,10 @@ def create_network(cfg: Dict[str, Any]):
             cfg['in_chn'],
             cfg['out_chn'],
             cfg['BN_momentum']
+        )
+    elif name == 'aqmamba':
+        net = AquaticMambaNet(
+            **cfg
         )
     else:
         assert f"<{name}> is not supported!"
