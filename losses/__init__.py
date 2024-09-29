@@ -5,6 +5,7 @@ from .loss import (
     FourDomainLoss,
     FourDomainLoss2,
     FourDomainLoss3,
-    EdgeLoss
+    EdgeLoss,
+    ContrastLoss
 )
 from .s3im import S3IM

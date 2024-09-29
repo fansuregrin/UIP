@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torchvision.transforms.functional as tvF
 from torch import Tensor
 from torchvision.models import vgg19_bn, VGG19_BN_Weights
 from torchvision.models.feature_extraction import get_graph_node_names, create_feature_extractor
@@ -155,3 +156,45 @@ class EdgeLoss(nn.Module):
         _, y_hat_edges = canny(y_hat)
         _, y_edges = canny(y)
         return F.l1_loss(y_hat_edges, y_edges)
+    
+
+class ContrastLoss(nn.Module):
+    def __init__(self, win_size=3) -> None:
+        super().__init__()
+        assert win_size%2 == 1, 'Please use odd kernel size'
+        self.win_size = win_size
+        if torch.cuda.is_available():
+            device_ = torch.device('cuda')
+        else:
+            device_ = torch.device('cpu')
+        gamma_ = torch.zeros((1,), dtype=torch.float, device=device_)
+        self.gamma = torch.nn.Parameter(gamma_, requires_grad=True)
+
+    def _calc_contrast(self, x: torch.Tensor) -> torch.Tensor:
+        B, C, H, W = x.shape
+        
+        # RGB to GrayScale
+        lumi = tvF.rgb_to_grayscale(x)
+        
+        # calculate local contrast
+        unfolded_ = F.unfold(lumi, self.win_size, stride=1, padding=(self.win_size-1)//2)\
+            .reshape((B, lumi.shape[1], -1, H, W))
+        mean_vals = unfolded_.mean(dim=2, keepdim=True)
+        deviations_ = unfolded_ - mean_vals
+        std_devs_ = deviations_.std(dim=2, keepdim=True)
+        local_contrast = std_devs_ / (mean_vals + 1e-5)
+        local_contrast = local_contrast.squeeze(2).reshape((B, -1, H, W))
+        
+        return torch.mean(local_contrast)
+    
+    def forward(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        """
+        Args:
+            x: predicted
+            y: reference
+        """
+        assert x.shape == y.shape, 'x and y must have the same shape'
+        dist = torch.abs(self._calc_contrast(x) - self._calc_contrast(y))
+        loss = (-self._calc_contrast(x) + dist) * self.gamma
+
+        return loss
