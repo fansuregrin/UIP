@@ -50,7 +50,7 @@ class ImgEnhanceModel(BaseModel):
         
     def load_network_state(self, state_name: str):
         state_path = os.path.join(self.checkpoint_dir, 'network', state_name)
-        self.network.load_state_dict(torch.load(state_path))
+        self.network.load_state_dict(torch.load(state_path, weights_only=True))
         if self.logger:
             self.logger.info('Loaded network weights from {}.'.format(
                 state_path
@@ -58,7 +58,7 @@ class ImgEnhanceModel(BaseModel):
 
     def load_optimizer_state(self, state_name: str):
         state_path = os.path.join(self.checkpoint_dir, 'optimizer', state_name)
-        self.optimizer.load_state_dict(torch.load(state_path))
+        self.optimizer.load_state_dict(torch.load(state_path, weights_only=True))
         if self.logger:
             self.logger.info('Loaded optimizer state from {}.'.format(
                 state_path
@@ -66,7 +66,7 @@ class ImgEnhanceModel(BaseModel):
 
     def load_lr_scheduler_state(self, state_name: str):
         state_path = os.path.join(self.checkpoint_dir, 'lr_scheduler', state_name)
-        self.lr_scheduler.load_state_dict(torch.load(state_path))
+        self.lr_scheduler.load_state_dict(torch.load(state_path, weights_only=True))
         if self.logger:
             self.logger.info('Loaded lr_scheduler state from {}.'.format(
                 state_path

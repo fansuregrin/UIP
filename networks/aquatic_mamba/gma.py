@@ -169,7 +169,7 @@ class EfficientAtt(nn.Module):
 
         trans_dim = dim // 5 * 4
         a_ = num_heads / 6
-        hs3 = int(a_ * 3)
+        hs3 = int(a_ * 1)
         hs5 = int(a_ * 2)
         if hs3 == 0:
             hs3 = 1
