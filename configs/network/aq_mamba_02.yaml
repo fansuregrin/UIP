@@ -1,4 +1,4 @@
-# full, base dims
+# w/o CDAM, base dims
 name: aqmamba
 img_size: 256
 patch_size: 4
@@ -17,4 +17,4 @@ patch_norm: true
 use_ape: true
 use_gma: true
 gma_num_heads: 8
-use_cdam: true
+use_cdam: false

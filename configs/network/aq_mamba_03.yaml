@@ -1,4 +1,4 @@
-# full, base dims
+# w/o CADM & GMA, base dims
 name: aqmamba
 img_size: 256
 patch_size: 4
@@ -15,6 +15,6 @@ drop_path_rate: 0.1
 norm_layer: 'layer_norm'
 patch_norm: true
 use_ape: true
-use_gma: true
+use_gma: false
 gma_num_heads: 8
-use_cdam: true
+use_cdam: false
