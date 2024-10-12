@@ -172,7 +172,8 @@ class EnhanceLayer(nn.Module):
     ):
         super().__init__()
         self.dim = dim
-        self.gma = GmaBlock(dim, kwargs.get('gma_num_heads', 4)) if 'use_gma' in kwargs else None
+        self.use_gma = kwargs.get('use_gma', False)
+        self.gma = GmaBlock(dim, kwargs.get('gma_num_heads', 4)) if self.use_gma else None
         self.blocks = nn.ModuleList([
             EnhanceBlock(
                 dim = dim,
@@ -184,7 +185,7 @@ class EnhanceLayer(nn.Module):
 
     def forward(self, x):
         B, pnH, pnW, C = x.shape
-        if self.gma is not None:
+        if self.use_gma:
             x = x.reshape((B, pnH*pnW, C))
             x = self.gma(x, (pnH,pnW))
             x = x.reshape((B, pnH, pnW, C))
@@ -355,17 +356,6 @@ class AquaticMambaNet(nn.Module):
         x = self.final_conv(x)
         if self.use_cdam:
             x = self.cdam_list[-1](x)
-
-        return x
-
-    def forward_backbone(self, x):
-        x = self.patch_embed(x)
-        if self.ape:
-            x = x + self.absolute_pos_embed
-        x = self.pos_drop(x)
-
-        for layer in self.layers:
-            x = layer(x)
 
         return x
 
