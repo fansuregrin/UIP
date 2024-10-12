@@ -1,27 +1,16 @@
 import torch.nn as nn
 import torch.nn.functional as F 
 import torch as th
-import datetime
-import os
-import time
-import timeit
-import copy
-import numpy as np 
-from torch.nn import ModuleList
 from torch.nn import Conv2d
 from torch.nn import LeakyReLU
 
 
-
-
-#PixelwiseNorm代替了BatchNorm
 class PixelwiseNorm(th.nn.Module):
     def __init__(self):
         super(PixelwiseNorm, self).__init__()
 
     def forward(self, x, alpha=1e-8):
-        """
-        forward pass of the module
+        """forward pass of the module
         :param x: input activations volume
         :param alpha: small number for numerical stability
         :return: y => pixel normalized activations
@@ -31,21 +20,15 @@ class PixelwiseNorm(th.nn.Module):
         return y
 
 
-
 class MinibatchStdDev(th.nn.Module):
-    """
-    Minibatch standard deviation layer for the discriminator
+    """Minibatch standard deviation layer for the discriminator
     """
 
     def __init__(self):
-        """
-        derived class constructor
-        """
         super().__init__()
 
     def forward(self, x, alpha=1e-8):
-        """
-        forward pass of the layer
+        """forward pass of the layer
         :param x: input activation volume
         :param alpha: small number for numerical stability
         :return: y => x appended with standard deviation constant map
@@ -69,9 +52,6 @@ class MinibatchStdDev(th.nn.Module):
 
         # return the computed values:
         return y
-
-
-
 
 
 # ==========================================================
@@ -230,8 +210,6 @@ class conv_block(nn.Module):
         return y
 
 
-
-
 #basic up convolution block of the encoding part of the genarater
 #编码器的基本卷积块
 class up_conv(nn.Module):
@@ -276,8 +254,6 @@ class up_conv(nn.Module):
         y=y+residual
 
         return y
-
-
 
 
 #判别器的最后一层
@@ -338,7 +314,6 @@ class DisFinalBlock(th.nn.Module):
         return y
 
 
-
 #判别器基本卷积块
 class DisGeneralConvBlock(th.nn.Module):
     """ General block in the discriminator  """
@@ -386,9 +361,6 @@ class DisGeneralConvBlock(th.nn.Module):
         return y
 
 
-
-        
-
 class from_rgb(nn.Module):
     """
     The RGB image is transformed into a multi-channel feature map to be concatenated with 
@@ -417,6 +389,7 @@ class from_rgb(nn.Module):
         y = self.pixNorm(self.lrelu(self.conv_1(x)))
         return y
 
+
 class to_rgb(nn.Module):
     """
     把多通道特征图转换为RGB三通道图，以便输入判别器
@@ -429,10 +402,6 @@ class to_rgb(nn.Module):
         else:
             self.conv_1 = nn.Conv2d(inchannels, 3, (1, 1),bias=True)
 
-
-
-
-
     def forward(self, x):
         """
         forward pass of the block
@@ -444,10 +413,10 @@ class to_rgb(nn.Module):
 
         return y
 
+
 class Flatten(nn.Module):
     def forward(self, x):
         return x.view(x.size(0), -1)
-
 
 
 class CCA(nn.Module):

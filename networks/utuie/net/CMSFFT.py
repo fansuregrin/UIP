@@ -7,7 +7,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 import copy
-import logging
 import math
 import torch
 import torch.nn as nn
@@ -20,7 +19,6 @@ from torch.nn.modules.utils import _pair
 #transformer.num_heads  = 4
 #transformer.num_layers = 4
 #expand_ratio           = 4
-
 
 
 #线性编码
@@ -80,6 +78,7 @@ class Reconstruct(nn.Module):
         out = self.activation(out)
         return out
 
+
 class Attention_org(nn.Module):
     def __init__(self, vis,channel_num, KV_size=480, num_heads=4):
         super(Attention_org, self).__init__()
@@ -117,8 +116,6 @@ class Attention_org(nn.Module):
         self.out4 = nn.Linear(channel_num[3], channel_num[3], bias=False)
         self.attn_dropout = Dropout(0.1)
         self.proj_dropout = Dropout(0.1)
-
-
 
     def forward(self, emb1,emb2,emb3,emb4, emb_all):
         multi_head_Q1_list = []
@@ -218,8 +215,6 @@ class Attention_org(nn.Module):
         return O1,O2,O3,O4, weights
 
 
-
-
 class Mlp(nn.Module):
     def __init__(self, in_channel, mlp_channel):
         super(Mlp, self).__init__()
@@ -243,6 +238,7 @@ class Mlp(nn.Module):
         x = self.dropout(x)
         return x
 
+
 class Block_ViT(nn.Module):
     def __init__(self, vis, channel_num, expand_ratio=4,KV_size=480):
         super(Block_ViT, self).__init__()
@@ -262,7 +258,6 @@ class Block_ViT(nn.Module):
         self.ffn2 = Mlp(channel_num[1],channel_num[1]*expand_ratio)
         self.ffn3 = Mlp(channel_num[2],channel_num[2]*expand_ratio)
         self.ffn4 = Mlp(channel_num[3],channel_num[3]*expand_ratio)
-
 
     def forward(self, emb1,emb2,emb3,emb4):
         embcat = []

@@ -1,4 +1,4 @@
-"""https://github.com/JCruan519/EGE-UNet/blob/main/models/egeunet.py"""
+"""From https://github.com/JCruan519/EGE-UNet/blob/main/models/egeunet.py"""
 import torch
 from torch import nn
 import torch.nn.functional as F
@@ -21,8 +21,7 @@ class DepthWiseConv2d(nn.Module):
 
 
 class LayerNorm(nn.Module):
-    r""" From ConvNeXt (https://arxiv.org/pdf/2201.03545.pdf)
-    """
+    """From ConvNeXt (https://arxiv.org/pdf/2201.03545.pdf)"""
     def __init__(self, normalized_shape, eps=1e-6, data_format="channels_last"):
         super().__init__()
         self.weight = nn.Parameter(torch.ones(normalized_shape))
@@ -44,7 +43,7 @@ class LayerNorm(nn.Module):
             return x
     
 
-class group_aggregation_bridge(nn.Module):
+class GroupAggregationBridge(nn.Module):
     def __init__(self, dim_xh, dim_xl, k_size=3, d_list=[1,2,5,7], use_mask=True):
         super().__init__()
         self.pre_project = nn.Conv2d(dim_xh, dim_xl, 1)
@@ -98,7 +97,7 @@ class group_aggregation_bridge(nn.Module):
         return x
 
 
-class Grouped_multi_axis_Hadamard_Product_Attention(nn.Module):
+class GroupedMultiAxisHadamardProductAttention(nn.Module):
     def __init__(self, dim_in, dim_out, x=8, y=8):
         super().__init__()
         
@@ -161,7 +160,14 @@ class Grouped_multi_axis_Hadamard_Product_Attention(nn.Module):
     
 
 class EGEUNet(nn.Module):
-    def __init__(self, num_classes=1, input_channels=3, c_list=[8,16,24,32,48,64], bridge=True, gt_ds=True):
+    """Efficient Group Enhanced UNet"""
+    def __init__(self,
+                 num_classes = 1,
+                 input_channels = 3,
+                 c_list = [8,16,24,32,48,64],
+                 bridge = True,
+                 gt_ds = True,
+                 **kwargs):
         super().__init__()
 
         self.bridge = bridge
@@ -177,23 +183,23 @@ class EGEUNet(nn.Module):
             nn.Conv2d(c_list[1], c_list[2], 3, stride=1, padding=1),
         )
         self.encoder4 = nn.Sequential(
-            Grouped_multi_axis_Hadamard_Product_Attention(c_list[2], c_list[3]),
+            GroupedMultiAxisHadamardProductAttention(c_list[2], c_list[3]),
         )
         self.encoder5 = nn.Sequential(
-            Grouped_multi_axis_Hadamard_Product_Attention(c_list[3], c_list[4]),
+            GroupedMultiAxisHadamardProductAttention(c_list[3], c_list[4]),
         )
         self.encoder6 = nn.Sequential(
-            Grouped_multi_axis_Hadamard_Product_Attention(c_list[4], c_list[5]),
+            GroupedMultiAxisHadamardProductAttention(c_list[4], c_list[5]),
         )
 
         if bridge:
-            print('group_aggregation_bridge was used')
+            print('GroupAggregationBridge was used')
             if gt_ds:
-                self.GAB1 = group_aggregation_bridge(c_list[1], c_list[0])
-                self.GAB2 = group_aggregation_bridge(c_list[2], c_list[1])
-                self.GAB3 = group_aggregation_bridge(c_list[3], c_list[2])
-                self.GAB4 = group_aggregation_bridge(c_list[4], c_list[3])
-                self.GAB5 = group_aggregation_bridge(c_list[5], c_list[4])
+                self.GAB1 = GroupAggregationBridge(c_list[1], c_list[0])
+                self.GAB2 = GroupAggregationBridge(c_list[2], c_list[1])
+                self.GAB3 = GroupAggregationBridge(c_list[3], c_list[2])
+                self.GAB4 = GroupAggregationBridge(c_list[4], c_list[3])
+                self.GAB5 = GroupAggregationBridge(c_list[5], c_list[4])
                 self.gt_conv1 = nn.Sequential(nn.Conv2d(c_list[4], 1, 1))
                 self.gt_conv2 = nn.Sequential(nn.Conv2d(c_list[3], 1, 1))
                 self.gt_conv3 = nn.Sequential(nn.Conv2d(c_list[2], 1, 1))
@@ -201,11 +207,11 @@ class EGEUNet(nn.Module):
                 self.gt_conv5 = nn.Sequential(nn.Conv2d(c_list[0], 1, 1))
                 print('gt deep supervision was used')
             else:
-                self.GAB1 = group_aggregation_bridge(c_list[1], c_list[0], use_mask=False)
-                self.GAB2 = group_aggregation_bridge(c_list[2], c_list[1], use_mask=False)
-                self.GAB3 = group_aggregation_bridge(c_list[3], c_list[2], use_mask=False)
-                self.GAB4 = group_aggregation_bridge(c_list[4], c_list[3], use_mask=False)
-                self.GAB5 = group_aggregation_bridge(c_list[5], c_list[4], use_mask=False)
+                self.GAB1 = GroupAggregationBridge(c_list[1], c_list[0], use_mask=False)
+                self.GAB2 = GroupAggregationBridge(c_list[2], c_list[1], use_mask=False)
+                self.GAB3 = GroupAggregationBridge(c_list[3], c_list[2], use_mask=False)
+                self.GAB4 = GroupAggregationBridge(c_list[4], c_list[3], use_mask=False)
+                self.GAB5 = GroupAggregationBridge(c_list[5], c_list[4], use_mask=False)
         else:
             if gt_ds:
                 self.gt_conv1 = nn.Sequential(nn.Conv2d(c_list[4], 1, 1))
@@ -216,13 +222,13 @@ class EGEUNet(nn.Module):
                 print('gt deep supervision was used')
         
         self.decoder1 = nn.Sequential(
-            Grouped_multi_axis_Hadamard_Product_Attention(c_list[5], c_list[4]),
+            GroupedMultiAxisHadamardProductAttention(c_list[5], c_list[4]),
         ) 
         self.decoder2 = nn.Sequential(
-            Grouped_multi_axis_Hadamard_Product_Attention(c_list[4], c_list[3]),
+            GroupedMultiAxisHadamardProductAttention(c_list[4], c_list[3]),
         ) 
         self.decoder3 = nn.Sequential(
-            Grouped_multi_axis_Hadamard_Product_Attention(c_list[3], c_list[2]),
+            GroupedMultiAxisHadamardProductAttention(c_list[3], c_list[2]),
         )  
         self.decoder4 = nn.Sequential(
             nn.Conv2d(c_list[2], c_list[1], 3, stride=1, padding=1),

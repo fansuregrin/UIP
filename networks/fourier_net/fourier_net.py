@@ -126,8 +126,8 @@ class ProcessBlock(nn.Module):
         return x_out+xori
     
 
-class FourNet(nn.Module):
-    def __init__(self, in_nc, nc, out_nc):
+class FourierNet(nn.Module):
+    def __init__(self, in_nc, nc, out_nc, **kwargs):
         super().__init__()
         self.conv0 = nn.Conv2d(in_nc,nc,1,1,0)
         self.conv1 = ProcessBlock(nc)

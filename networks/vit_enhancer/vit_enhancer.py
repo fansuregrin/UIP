@@ -1,9 +1,8 @@
-import torch
 import torch.nn as nn
 import timm.models.vision_transformer as vit
 from einops import rearrange
 
-from .cbam import CBAMBlock
+from networks.cbam import CBAMBlock
 
 
 class ViTEnhancer1(nn.Module):
@@ -18,7 +17,8 @@ class ViTEnhancer1(nn.Module):
                  vit_scale: str = 'tiny',
                  use_dropout: bool = False,
                  use_att_up: bool = True,
-                 pretrained_encoder = True):
+                 pretrained_encoder = True,
+                 **kwargs):
         super().__init__()
         self.img_h = img_h
         self.img_w = img_w
@@ -93,7 +93,8 @@ class ViTEnhancer2(nn.Module):
                  vit_scale: str = 'tiny',
                  use_dropout: bool = False,
                  use_att_up: bool = True,
-                 pretrained_encoder = True):
+                 pretrained_encoder = True,
+                 **kwargs):
         super().__init__()
         self.img_h = img_h
         self.img_w = img_w

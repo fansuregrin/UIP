@@ -1,10 +1,9 @@
-import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 
 class SegNet(nn.Module):
-    def __init__(self, in_chn=3, out_chn=32, BN_momentum=0.5):
+    def __init__(self, in_chn=3, out_chn=32, BN_momentum=0.5, **kwargs):
         super(SegNet, self).__init__()
 
         #SegNet Architecture

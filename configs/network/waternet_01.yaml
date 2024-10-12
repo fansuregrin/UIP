@@ -1,2 +1,2 @@
 name: 'waternet'
-use_sigmoid: false
+use_final_sigmoid: false

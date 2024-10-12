@@ -11,10 +11,22 @@ from .vmamba import (
 
 
 class VGUNet(nn.Module):
-    def __init__(self, patch_size=4, in_chans=3, out_chans=3, depths=[2, 2, 2, 2], depths_decoder=[2, 2, 2, 2],
-                 dims=[80, 160, 320, 640], dims_decoder=[640, 320, 160, 80], d_state=16, drop_rate=0., attn_drop_rate=0., drop_path_rate=0.1,
-                 norm_layer=nn.LayerNorm, patch_norm=True,
-                 use_checkpoint=False, **kwargs):
+    def __init__(self,
+                 patch_size=4,
+                 in_chans=3,
+                 out_chans=3,
+                 depths=[2, 2, 2, 2],
+                 depths_decoder=[2, 2, 2, 2],
+                 dims=[80, 160, 320, 640],
+                 dims_decoder=[640, 320, 160, 80],
+                 d_state=16,
+                 drop_rate=0.,
+                 attn_drop_rate=0.,
+                 drop_path_rate=0.1,
+                 norm_layer=nn.LayerNorm,
+                 patch_norm=True,
+                 use_checkpoint=False,
+                 **kwargs):
         super().__init__()
         self.out_chans = out_chans
         self.num_layers = len(depths)
@@ -148,10 +160,22 @@ class VGUNet(nn.Module):
 
 
 class VGUNet2(nn.Module):
-    def __init__(self, patch_size=4, in_chans=3, out_chans=3, depths=[2, 2, 2, 2], depths_decoder=[2, 2, 2, 2],
-                 dims=[80, 160, 320, 640], dims_decoder=[640, 320, 160, 80], d_state=16, drop_rate=0., attn_drop_rate=0., drop_path_rate=0.1,
-                 norm_layer=nn.LayerNorm, patch_norm=True,
-                 use_checkpoint=False, **kwargs):
+    def __init__(self,
+                 patch_size=4,
+                 in_chans=3,
+                 out_chans=3,
+                 depths=[2, 2, 2, 2],
+                 depths_decoder=[2, 2, 2, 2],
+                 dims=[80, 160, 320, 640],
+                 dims_decoder=[640, 320, 160, 80],
+                 d_state=16,
+                 drop_rate=0.,
+                 attn_drop_rate=0.,
+                 drop_path_rate=0.1,
+                 norm_layer=nn.LayerNorm,
+                 patch_norm=True,
+                 use_checkpoint=False,
+                 **kwargs):
         super().__init__()
         self.out_chans = out_chans
         self.num_layers = len(depths)
@@ -283,10 +307,22 @@ class VGUNet2(nn.Module):
     
 
 class VGUNet3(nn.Module):
-    def __init__(self, patch_size=4, in_chans=3, out_chans=3, depths=[2, 2, 2, 2], depths_decoder=[2, 2, 2, 2],
-                 dims=[80, 160, 320, 640], dims_decoder=[640, 320, 160, 80], d_state=16, drop_rate=0., attn_drop_rate=0., drop_path_rate=0.1,
-                 norm_layer=nn.LayerNorm, patch_norm=True,
-                 use_checkpoint=False, **kwargs):
+    def __init__(self,
+                 patch_size=4,
+                 in_chans=3,
+                 out_chans=3,
+                 depths=[2, 2, 2, 2],
+                 depths_decoder=[2, 2, 2, 2],
+                 dims=[80, 160, 320, 640],
+                 dims_decoder=[640, 320, 160, 80],
+                 d_state=16,
+                 drop_rate=0.,
+                 attn_drop_rate=0.,
+                 drop_path_rate=0.1,
+                 norm_layer=nn.LayerNorm,
+                 patch_norm=True,
+                 use_checkpoint=False,
+                 **kwargs):
         super().__init__()
         self.out_chans = out_chans
         self.num_layers = len(depths)
@@ -455,10 +491,22 @@ class VGUNet3(nn.Module):
 class VGUNet4(nn.Module):
     """Luminance Extraction, Chrominance Extraction, with skip-connection
     """
-    def __init__(self, patch_size=4, in_chans=3, out_chans=3, depths=[2, 2, 2, 2], depths_decoder=[2, 2, 2, 2],
-                 dims=[80, 160, 320, 640], dims_decoder=[640, 320, 160, 80], d_state=16, drop_rate=0., attn_drop_rate=0., drop_path_rate=0.1,
-                 norm_layer=nn.LayerNorm, patch_norm=True,
-                 use_checkpoint=False, **kwargs):
+    def __init__(self,
+                 patch_size=4,
+                 in_chans=3,
+                 out_chans=3,
+                 depths=[2, 2, 2, 2],
+                 depths_decoder=[2, 2, 2, 2],
+                 dims=[80, 160, 320, 640],
+                 dims_decoder=[640, 320, 160, 80],
+                 d_state=16,
+                 drop_rate=0.,
+                 attn_drop_rate=0.,
+                 drop_path_rate=0.1,
+                 norm_layer=nn.LayerNorm,
+                 patch_norm=True,
+                 use_checkpoint=False,
+                 **kwargs):
         super().__init__()
         self.out_chans = out_chans
         self.num_layers = len(depths)

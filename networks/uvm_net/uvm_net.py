@@ -4,7 +4,12 @@ from .unet_part import *
 
 
 class UVM_Net(nn.Module):
-    def __init__(self, in_channels, out_channels, base_channels=32, bilinear=True):
+    def __init__(self,
+                 in_channels,
+                 out_channels,
+                 base_channels=32,
+                 bilinear=True,
+                 **kwargs):
         super().__init__()
         self.in_ch = in_channels
         self.out_ch = out_channels

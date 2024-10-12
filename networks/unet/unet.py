@@ -4,7 +4,13 @@ import functools
 
 
 class UNet(nn.Module):
-    def __init__(self, input_nc, output_nc, ngf=64, norm_layer='instance_norm', use_dropout=False):
+    def __init__(self,
+                 input_nc,
+                 output_nc,
+                 ngf=64,
+                 norm_layer='instance_norm',
+                 use_dropout=False,
+                 **kwargs):
         """Construct a UNet
         Parameters:
             input_nc (int)       -- the number of channels in input images

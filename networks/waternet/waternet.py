@@ -80,22 +80,24 @@ class Refiner(nn.Module):
 
 
 class WaterNet(nn.Module):
-    """
-    waternet = WaterNet()
-    in = torch.randn(16, 3, 112, 112)
-    waternet_out = waternet(in, in, in, in)
-    waternet_out.shape
-    # torch.Size([16, 3, 112, 112])
+    """WaterNet
+
+    Examples:
+
+        >>> waternet = WaterNet()
+        >>> in = torch.randn(16, 3, 112, 112)
+        >>> out = waternet(in, in, in, in)
+        >>> out.shape
     """
 
-    def __init__(self, cfg):
+    def __init__(self, **kwargs):
         super().__init__()
-        self.cfg = cfg
         self.cmg = ConfidenceMapGenerator()
         self.wb_refiner = Refiner()
         self.he_refiner = Refiner()
         self.gc_refiner = Refiner()
-        if self.cfg['use_sigmoid']:
+        self.use_final_sigmoid = kwargs.get('use_final_sigmoid', False)
+        if self.use_final_sigmoid:
             self.output = nn.Sigmoid()
 
     def forward(self, x, wb, he, gc):
@@ -103,11 +105,9 @@ class WaterNet(nn.Module):
         refined_wb = self.wb_refiner(x, wb)
         refined_he = self.he_refiner(x, he)
         refined_gc = self.gc_refiner(x, gc)
-        out = (
-            torch.mul(refined_wb, wb_cm)
-            + torch.mul(refined_he, he_cm)
+        out = torch.mul(refined_wb, wb_cm)\
+            + torch.mul(refined_he, he_cm)\
             + torch.mul(refined_gc, gc_cm)
-        )
-        if self.cfg['use_sigmoid']:
+        if self.use_final_sigmoid:
             out = self.output(out)
         return out

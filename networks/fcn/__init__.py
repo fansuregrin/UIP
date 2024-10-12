@@ -1,15 +1,15 @@
 from networks import NetworkCreator, register_network_creator
-from .erd import ERD
+from .fcn import FCN
 
-__all__ = ['ERD']
+__all__ = ['FCN']
 
 
-class ERDCreator(NetworkCreator):
+class FCNCreator(NetworkCreator):
     def __init__(self):
         super().__init__()
-    
+
     def create_network(cfg):
-        return ERD(**cfg)
+        return FCN(**cfg)
     
 
-register_network_creator('erd', ERDCreator)
+register_network_creator('fcn', FCN)

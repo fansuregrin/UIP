@@ -137,7 +137,7 @@ class FFRLM(nn.Module):
     
 
 class MIMOSwinTUNet(nn.Module):
-    def __init__(self, img_size=256, num_res=8, num_swinT=4):
+    def __init__(self, img_size=256, num_res=8, num_swinT=4, **kwargs):
         super().__init__()
 
         base_channel = 32
@@ -264,7 +264,7 @@ class MIMOSwinTUNet(nn.Module):
 
 
 class MIMOSwinTUNet2(nn.Module):
-    def __init__(self, img_size=256, num_res=8, num_swinT=4):
+    def __init__(self, img_size=256, num_res=8, num_swinT=4, **kwargs):
         super().__init__()
 
         base_channel = 32
@@ -387,7 +387,7 @@ class MIMOSwinTUNet2(nn.Module):
     
 
 class MIMOSwinTUNet3(nn.Module):
-    def __init__(self, img_size=256, num_res=8, num_swinT=4):
+    def __init__(self, img_size=256, num_res=8, num_swinT=4, **kwargs):
         super().__init__()
 
         base_channel = 32
@@ -510,7 +510,7 @@ class MIMOSwinTUNet3(nn.Module):
 
 
 class MIMOSwinTUNet4(nn.Module):
-    def __init__(self, img_size=256, num_res=8, num_swinT=4, fused_window_process=False):
+    def __init__(self, img_size=256, num_res=8, num_swinT=4, fused_window_process=False, **kwargs):
         super().__init__()
 
         base_channel = 32
@@ -635,7 +635,7 @@ class MIMOSwinTUNet4(nn.Module):
     
 
 class MIMOSwinTUNet5(nn.Module):
-    def __init__(self, img_size=256, num_res=8, num_swinT=4, fused_window_process=False):
+    def __init__(self, img_size=256, num_res=8, num_swinT=4, fused_window_process=False, **kwargs):
         super().__init__()
 
         base_channel = 32
@@ -762,7 +762,7 @@ class MIMOSwinTUNet5(nn.Module):
 class MIMOSwinTUNet6(nn.Module):
     """Without MFF
     """
-    def __init__(self, img_size=256, num_res=8, num_swinT=4, fused_window_process=False):
+    def __init__(self, img_size=256, num_res=8, num_swinT=4, fused_window_process=False, **kwargs):
         super().__init__()
 
         base_channel = 32
@@ -869,7 +869,7 @@ class MIMOSwinTUNet6(nn.Module):
 class MIMOSwinTUNet7(nn.Module):
     """Single Scale
     """
-    def __init__(self, img_size=256, num_res=8, num_swinT=4, fused_window_process=False):
+    def __init__(self, img_size=256, num_res=8, num_swinT=4, fused_window_process=False, **kwargs):
         super().__init__()
 
         base_channel = 32

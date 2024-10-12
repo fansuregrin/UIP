@@ -67,7 +67,7 @@ class ERD(nn.Module):
     def __init__(self,
                  input_nc: int,
                  output_nc: int,
-                 n_blocks: int,
+                 n_blocks_res: int,
                  n_down: int,
                  input_h: int = 256,
                  input_w: int = 256,
@@ -82,7 +82,8 @@ class ERD(nn.Module):
                  use_ca: bool = True,
                  use_sa_swinT: bool = True,
                  norm_layer: str = 'instance_norm',
-                 fused_window_process: bool = False):
+                 fused_window_process: bool = False,
+                 **kwargs):
         """Initializes the RANet.
 
         Args:
@@ -105,7 +106,7 @@ class ERD(nn.Module):
             norm_layer: Type of Normalization layer.
             fused_window_process: Whether to use fused window process.
         """
-        assert (n_blocks >= 0 and n_down >= 0)
+        assert (n_blocks_res >= 0 and n_down >= 0)
         super().__init__()
         norm_layer = self._get_norm_layer(norm_layer)
         use_bias = (norm_layer is None)
@@ -129,7 +130,7 @@ class ERD(nn.Module):
         # Residual Module
         blocks = []
         mult = 2 ** n_down
-        for i in range(n_blocks):
+        for i in range(n_blocks_res):
             blocks.append(
                 ResnetBlock(ngf * mult, padding_type=padding_type, norm_layer=norm_layer,
                             use_dropout=use_dropout, use_bias=use_bias))

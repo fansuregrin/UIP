@@ -71,7 +71,7 @@ class ColorCorrection(nn.Module):
     
 
 class ColorEnhancementNet(nn.Module):
-    def __init__(self):
+    def __init__(self, **kwargs):
         super().__init__()
         self.feat_extractor = FeatureExtractor()
         self.ccm = ColorCorrection(4, 256, 2, 1)

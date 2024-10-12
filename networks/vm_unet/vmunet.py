@@ -1,5 +1,4 @@
 from .vmamba import VSSM
-import torch
 from torch import nn
 
 
@@ -10,6 +9,7 @@ class VMUNet(nn.Module):
                  depths=[2, 2, 9, 2], 
                  depths_decoder=[2, 9, 2, 2],
                  drop_path_rate=0.2,
+                 **kwargs
                 ):
         super().__init__()
 

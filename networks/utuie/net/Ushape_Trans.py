@@ -34,9 +34,6 @@ def weights_init_normal(m):
 
 
 class Generator(nn.Module):
-	"""
-	MSG-Unet-GAN的生成器部分
-	"""
 	def __init__(self,
 		img_dim=256,
 		patch_dim=16,
@@ -51,7 +48,9 @@ class Generator(nn.Module):
 		out_ch=3,
 		conv_patch_representation=True,
 		positional_encoding_type="learned",
-		use_eql=True):
+		use_eql=True,
+		**kwargs
+	):
 		super(Generator, self).__init__()
 		assert embedding_dim % num_heads == 0
 		assert img_dim % patch_dim == 0
@@ -283,10 +282,11 @@ class Generator(nn.Module):
 		return output
 
 
-
-
 class Discriminator(nn.Module):
-    def __init__(self, in_channels=3,use_eql=True):
+    def __init__(self,
+				 in_channels=3,
+				 use_eql=True,
+				 **kwargs):
         super(Discriminator, self).__init__()
 
         self.use_eql=use_eql

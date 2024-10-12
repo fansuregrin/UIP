@@ -8,4 +8,18 @@ code: https://github.com/zzr-idam/UVM-Net
   year={2024}
 }
 """
+from networks import NetworkCreator, register_network_creator
 from .uvm_net import UVM_Net
+
+__all__ = ['UVM_Net']
+
+
+class UVMNetCreator(NetworkCreator):
+    def __init__(self):
+        super().__init__()
+
+    def create_network(cfg):
+        return UVM_Net(**cfg)
+    
+
+register_network_creator('uvmnet', UVMNetCreator)

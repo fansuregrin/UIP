@@ -5,7 +5,7 @@ from torchvision.models.segmentation import (
 
 
 class FCN(nn.Module):
-    def __init__(self, num_classes, backbone):
+    def __init__(self, num_classes, backbone, **kwargs):
         super().__init__()
         if backbone == 'resnet50':
             self.fcn = fcn_resnet50(num_classes=num_classes)

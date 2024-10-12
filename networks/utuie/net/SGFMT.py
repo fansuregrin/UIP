@@ -121,6 +121,5 @@ class TransformerModel(nn.Module):
             # dim = dim / 2
         self.net = IntermediateSequential(*layers)
 
-
     def forward(self, x):
         return self.net(x)

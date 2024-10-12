@@ -2,10 +2,10 @@ import torch.nn as nn
 from typing import Union
 from einops import rearrange
 
-from .cbam import CBAMBlock
-from .resnet import ResnetBlock
-from .wfefb import WFEFB
-from .swin_transformer.swin_transformer import SwinTransformerBlock
+from networks.cbam import CBAMBlock
+from networks.resnet import ResnetBlock
+from networks.wfefb import WFEFB
+from networks.swin_transformer.swin_transformer import SwinTransformerBlock
 
 
 class RANet(nn.Module):
@@ -21,7 +21,8 @@ class RANet(nn.Module):
                  use_dropout: bool = False,
                  use_att_down: bool = True,
                  use_att_up: bool = False,
-                 norm_layer=nn.InstanceNorm2d):
+                 norm_layer=nn.InstanceNorm2d,
+                 **kwargs):
         """Initializes the RANet.
 
         Args:
@@ -176,7 +177,8 @@ class RANet2(nn.Module):
                  use_dropout: bool = False,
                  use_att_down: bool = True,
                  use_att_up: bool = False,
-                 norm_layer = 'instance_norm'):
+                 norm_layer = 'instance_norm',
+                 **kwargs):
         """Initializes the RANet.
 
         Args:
@@ -336,7 +338,7 @@ class RANet3(nn.Module):
     def __init__(self,
                  input_nc: int,
                  output_nc: int,
-                 n_blocks: int,
+                 n_blocks_res: int,
                  n_down: int,
                  ngf: int = 64,
                  wrpm_kernel_size: int = 7,
@@ -347,7 +349,8 @@ class RANet3(nn.Module):
                  use_dropout: bool = False,
                  use_att_down: bool = True,
                  use_att_up: bool = False,
-                 norm_layer = 'instance_norm'):
+                 norm_layer = 'instance_norm',
+                 **kwargs):
         """Initializes the RANet.
 
         Args:
@@ -366,7 +369,7 @@ class RANet3(nn.Module):
             use_att_up: Whether to use attention block in up-sampling.
             norm_layer: Type of Normalization layer.
         """
-        assert (n_blocks >= 0 and n_down >= 0)
+        assert (n_blocks_res >= 0 and n_down >= 0)
         super().__init__()
         norm_layer = self._get_norm_layer(norm_layer)
         use_bias = (norm_layer is None)
@@ -391,7 +394,7 @@ class RANet3(nn.Module):
         # High-level Features Residual Learning Module (HFRLM)
         hfrlm = []
         mult = 2 ** n_down
-        for i in range(n_blocks):
+        for i in range(n_blocks_res):
             hfrlm.append(
                 ResnetBlock(ngf * mult, padding_type=padding_type, norm_layer=norm_layer,
                             use_dropout=use_dropout, use_bias=use_bias))
@@ -525,7 +528,8 @@ class RANet4(nn.Module):
                  use_dropout: bool = False,
                  use_att_down: bool = True,
                  use_att_up: bool = False,
-                 norm_layer = 'instance_norm'):
+                 norm_layer = 'instance_norm',
+                 **kwargs):
         """Initializes the RANet.
 
         Args:
@@ -712,7 +716,8 @@ class RANet5(nn.Module):
                  use_wfef_down: bool = True,
                  use_att_up: bool = False,
                  use_wfef_up: bool = False,
-                 norm_layer = 'instance_norm'):
+                 norm_layer = 'instance_norm',
+                 **kwargs):
         """Initializes the RANet.
 
         Args:
@@ -944,7 +949,7 @@ class RANet6(nn.Module):
     def __init__(self,
                  input_nc: int,
                  output_nc: int,
-                 n_blocks: int,
+                 n_blocks_res: int,
                  n_down: int,
                  input_h: int = 256,
                  input_w: int = 256,
@@ -959,7 +964,8 @@ class RANet6(nn.Module):
                  use_att_down: bool = True,
                  use_att_up: bool = False,
                  norm_layer: str = 'instance_norm',
-                 fused_window_process: bool = False):
+                 fused_window_process: bool = False,
+                 **kwargs):
         """Initializes the RANet.
 
         Args:
@@ -982,7 +988,7 @@ class RANet6(nn.Module):
             norm_layer: Type of Normalization layer.
             fused_window_process: Whether to use fused window process.
         """
-        assert (n_blocks >= 0 and n_down >= 0)
+        assert (n_blocks_res >= 0 and n_down >= 0)
         super().__init__()
         norm_layer = self._get_norm_layer(norm_layer)
         use_bias = (norm_layer is None)
@@ -1006,7 +1012,7 @@ class RANet6(nn.Module):
         # High-level Features Residual Learning Module (HFRLM)
         hfrlm = []
         mult = 2 ** n_down
-        for i in range(n_blocks):
+        for i in range(n_blocks_res):
             hfrlm.append(
                 ResnetBlock(ngf * mult, padding_type=padding_type, norm_layer=norm_layer,
                             use_dropout=use_dropout, use_bias=use_bias))
