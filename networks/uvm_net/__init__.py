@@ -22,4 +22,4 @@ class UVMNetCreator(NetworkCreator):
         return UVM_Net(**cfg)
     
 
-register_network_creator('uvmnet', UVMNetCreator)
+register_network_creator('uvm_net', UVMNetCreator)

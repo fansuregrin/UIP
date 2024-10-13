@@ -12,4 +12,4 @@ class FCNCreator(NetworkCreator):
         return FCN(**cfg)
     
 
-register_network_creator('fcn', FCN)
+register_network_creator('fcn', FCNCreator)
