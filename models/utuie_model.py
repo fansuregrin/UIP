@@ -16,7 +16,7 @@ from kornia.losses import SSIMLoss
 from typing import Dict, Union
 
 from .base_model import BaseModel
-from networks.utuie.loss import LABLoss, LCHLoss, VGG19_PercepLoss
+from losses import LABLoss, LCHLoss, VGG19_PercepLoss
 
 
 class UTUIE(BaseModel):

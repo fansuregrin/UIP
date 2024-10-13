@@ -1,9 +1,7 @@
 from networks import NetworkCreator, register_network_creator
-from .loss import LABLoss, LCHLoss, VGG19_PercepLoss
 from .net import Generator, Discriminator
 
 __all__ = [
-    'LABLoss', 'LCHLoss', 'VGG19_PercepLoss',
     'Generator', 'Discriminator'
 ]
 

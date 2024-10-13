@@ -2,7 +2,6 @@ from .ssim import SSIM
 import torch
 
 
-
 class S3IM(torch.nn.Module):
     r"""Implements Stochastic Structural SIMilarity(S3IM) algorithm.
     It is proposed in the ICCV2023 paper  
@@ -23,6 +22,7 @@ class S3IM(torch.nn.Module):
         self.patch_height = patch_height
         self.patch_width = patch_width
         self.ssim_loss = SSIM(window_size=self.kernel_size, stride=self.stride)
+    
     def forward(self, src_vec, tar_vec):
         loss = 0.0
         index_list = []

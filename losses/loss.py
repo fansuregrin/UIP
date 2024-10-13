@@ -106,6 +106,7 @@ class L1CharbonnierLoss(nn.Module):
         loss = torch.mean(error)
         return loss
 
+
 class FourDomainLoss(nn.Module):
     """"""
     def __init__(self):
@@ -148,7 +149,7 @@ class FourDomainLoss3(nn.Module):
     
 
 class EdgeLoss(nn.Module):
-    """"""
+    """Loss function based on edge detection."""
     def __init__(self):
         super().__init__()
 
