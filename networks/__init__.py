@@ -8,14 +8,15 @@ class NetworkCreator(ABC):
     def __init__(self):
         super().__init__()
 
+    @staticmethod
     @abstractmethod
-    def create_network(cfg: Dict[str, Any]) -> Union[nn.Module, Dict]:
-        pass 
+    def create_network(cfg: Dict[str, Any]) -> nn.Module | Dict[str, nn.Module]:
+        pass
 
 
 network_creators: Dict[str, NetworkCreator] = {}
 
-def register_network_creator(name: str, creator: NetworkCreator):
+def register_network_creator(name: str, creator: type):
     network_creators[name] = creator
 
 from networks import (
@@ -41,7 +42,8 @@ from networks import (
     segnet
 )
 
-def create_network(cfg: Dict[str, Any]):
+def create_network(cfg: Dict[str, Any]) -> nn.Module | Dict[str, nn.Module]:
+    assert 'name' in cfg, "network name is required"
     name = cfg['name']
     assert name in network_creators, f'invalid network name: [{name}]'
     net = network_creators[name].create_network(cfg)
