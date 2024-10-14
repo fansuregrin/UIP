@@ -1,6 +1,8 @@
-from typing import Dict, Any, Union
+from typing import Dict, Any
 from abc import ABC, abstractmethod
 from torch import nn
+
+from utils import Registry
 
 
 class NetworkCreator(ABC):
@@ -14,10 +16,8 @@ class NetworkCreator(ABC):
         pass
 
 
-network_creators: Dict[str, NetworkCreator] = {}
+network_creators = Registry('NetworkCreator')
 
-def register_network_creator(name: str, creator: type):
-    network_creators[name] = creator
 
 from networks import (
     aquatic_mamba,
@@ -45,6 +45,5 @@ from networks import (
 def create_network(cfg: Dict[str, Any]) -> nn.Module | Dict[str, nn.Module]:
     assert 'name' in cfg, "network name is required"
     name = cfg['name']
-    assert name in network_creators, f'invalid network name: [{name}]'
-    net = network_creators[name].create_network(cfg)
+    net = network_creators.get(name).create_network(cfg)
     return net

@@ -1,4 +1,4 @@
-from networks import NetworkCreator, register_network_creator
+from networks import NetworkCreator, network_creators
 from .ranet import (
     RANet, RANet2, RANet3, RANet4, RANet5, RANet6
 )
@@ -7,6 +7,7 @@ from .ranet import (
 __all__ = ['RANet', 'RANet2', 'RANet3', 'RANet4', 'RANet5', 'RANet6']
 
 
+@network_creators.register('ra')
 class RANetCreator(NetworkCreator):
     def __init__(self):
         super().__init__()
@@ -15,6 +16,7 @@ class RANetCreator(NetworkCreator):
         return RANet(**cfg)
     
 
+@network_creators.register('ra2')
 class RANet2Creator(NetworkCreator):
     def __init__(self):
         super().__init__()
@@ -23,6 +25,7 @@ class RANet2Creator(NetworkCreator):
         return RANet2(**cfg)
     
 
+@network_creators.register('ra3')
 class RANet3Creator(NetworkCreator):
     def __init__(self):
         super().__init__()
@@ -31,6 +34,7 @@ class RANet3Creator(NetworkCreator):
         return RANet3(**cfg)
     
 
+@network_creators.register('ra4')
 class RANet4Creator(NetworkCreator):
     def __init__(self):
         super().__init__()
@@ -39,6 +43,7 @@ class RANet4Creator(NetworkCreator):
         return RANet4(**cfg)
 
 
+@network_creators.register('ra5')
 class RANet5Creator(NetworkCreator):
     def __init__(self):
         super().__init__()
@@ -47,17 +52,10 @@ class RANet5Creator(NetworkCreator):
         return RANet5(**cfg)
     
 
+@network_creators.register('ra6')
 class RANet6Creator(NetworkCreator):
     def __init__(self):
         super().__init__()
 
     def create_network(cfg):
         return RANet6(**cfg)
-    
-
-register_network_creator('ra', RANetCreator)
-register_network_creator('ra2', RANet2Creator)
-register_network_creator('ra3', RANet3Creator)
-register_network_creator('ra4', RANet4Creator)
-register_network_creator('ra5', RANet5Creator)
-register_network_creator('ra6', RANet6Creator)

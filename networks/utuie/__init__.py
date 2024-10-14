@@ -1,4 +1,4 @@
-from networks import NetworkCreator, register_network_creator
+from networks import NetworkCreator, network_creators
 from .net import Generator, Discriminator
 
 __all__ = [
@@ -6,6 +6,7 @@ __all__ = [
 ]
 
 
+@network_creators.register('utuie')
 class UTUIECreator(NetworkCreator):
     def __init__(self):
         super().__init__()
@@ -15,6 +16,3 @@ class UTUIECreator(NetworkCreator):
         discriminator = Discriminator(**cfg)
         net = {'G': generator, 'D': discriminator}
         return net
-    
-
-register_network_creator('utuie', UTUIECreator)

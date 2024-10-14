@@ -1,4 +1,4 @@
-from networks import NetworkCreator, register_network_creator
+from networks import NetworkCreator, network_creators
 from .mimo_swinT_unet import (
     MIMOSwinTUNet,
     MIMOSwinTUNet2,
@@ -20,6 +20,7 @@ __all__ = [
 ]
 
 
+@network_creators.register('mimo_swinT_unet')
 class MIMOSwinTUNetCreator(NetworkCreator):
     def __init__(self):
         super().__init__()
@@ -28,6 +29,7 @@ class MIMOSwinTUNetCreator(NetworkCreator):
         return MIMOSwinTUNet(**cfg)
     
 
+@network_creators.register('mimo_swinT_unet2')
 class MIMOSwinTUNet2Creator(NetworkCreator):
     def __init__(self):
         super().__init__()
@@ -36,6 +38,7 @@ class MIMOSwinTUNet2Creator(NetworkCreator):
         return MIMOSwinTUNet2(**cfg)
     
 
+@network_creators.register('mimo_swinT_unet3')
 class MIMOSwinTUNet3Creator(NetworkCreator):
     def __init__(self):
         super().__init__()
@@ -44,6 +47,7 @@ class MIMOSwinTUNet3Creator(NetworkCreator):
         return MIMOSwinTUNet3(**cfg)
     
 
+@network_creators.register('mimo_swinT_unet4')
 class MIMOSwinTUNet4Creator(NetworkCreator):
     def __init__(self):
         super().__init__()
@@ -52,6 +56,7 @@ class MIMOSwinTUNet4Creator(NetworkCreator):
         return MIMOSwinTUNet4(**cfg)
     
 
+@network_creators.register('mimo_swinT_unet5')
 class MIMOSwinTUNet5Creator(NetworkCreator):
     def __init__(self):
         super().__init__()
@@ -60,6 +65,7 @@ class MIMOSwinTUNet5Creator(NetworkCreator):
         return MIMOSwinTUNet5(**cfg)
 
 
+@network_creators.register('mimo_swinT_unet6')
 class MIMOSwinTUNet6Creator(NetworkCreator):
     def __init__(self):
         super().__init__()
@@ -68,18 +74,10 @@ class MIMOSwinTUNet6Creator(NetworkCreator):
         return MIMOSwinTUNet6(**cfg)
     
 
+@network_creators.register('mimo_swinT_unet7')
 class MIMOSwinTUNet7Creator(NetworkCreator):
     def __init__(self):
         super().__init__()
 
     def create_network(cfg):
         return MIMOSwinTUNet7(**cfg)
-    
-
-register_network_creator('mimo_swinT_unet', MIMOSwinTUNetCreator)
-register_network_creator('mimo_swinT_unet2', MIMOSwinTUNet2Creator)
-register_network_creator('mimo_swinT_unet3', MIMOSwinTUNet3Creator)
-register_network_creator('mimo_swinT_unet4', MIMOSwinTUNet4Creator)
-register_network_creator('mimo_swinT_unet5', MIMOSwinTUNet5Creator)
-register_network_creator('mimo_swinT_unet6', MIMOSwinTUNet6Creator)
-register_network_creator('mimo_swinT_unet7', MIMOSwinTUNet7Creator)

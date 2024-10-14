@@ -1,4 +1,4 @@
-from networks import NetworkCreator, register_network_creator
+from networks import NetworkCreator, network_creators
 from .vgunet import (
     VGUNet, VGUNet2, VGUNet3, VGUNet4
 )
@@ -6,6 +6,7 @@ from .vgunet import (
 __all__ = ['VGUNet', 'VGUNet2', 'VGUNet3', 'VGUNet4']
 
 
+@network_creators.register('vgunet')
 class VGUNetCreator(NetworkCreator):
     def __init__(self):
         super().__init__()
@@ -14,6 +15,7 @@ class VGUNetCreator(NetworkCreator):
         return VGUNet(**cfg)
     
 
+@network_creators.register('vgunet2')
 class VGUNet2Creator(NetworkCreator):
     def __init__(self):
         super().__init__()
@@ -22,6 +24,7 @@ class VGUNet2Creator(NetworkCreator):
         return VGUNet2(**cfg)
     
 
+@network_creators.register('vgunet3')
 class VGUNet3Creator(NetworkCreator):
     def __init__(self):
         super().__init__()
@@ -30,15 +33,10 @@ class VGUNet3Creator(NetworkCreator):
         return VGUNet3(**cfg)
     
 
+@network_creators.register('vgunet4')
 class VGUNet4Creator(NetworkCreator):
     def __init__(self):
         super().__init__()
 
     def create_network(cfg):
         return VGUNet4(**cfg)
-    
-
-register_network_creator('vgunet', VGUNetCreator)
-register_network_creator('vgunet2', VGUNet2Creator)
-register_network_creator('vgunet3', VGUNet3Creator)
-register_network_creator('vgunet4', VGUNet4Creator)

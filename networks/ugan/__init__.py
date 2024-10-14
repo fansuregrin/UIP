@@ -1,4 +1,4 @@
-from networks import NetworkCreator, register_network_creator
+from networks import NetworkCreator, network_creators
 from .pix2pix import GeneratorUNet as Generator
 from .ugan import Discriminator, Gradient_Difference_Loss
 from .commons import Gradient_Penalty
@@ -9,6 +9,7 @@ __all__ = [
 ]
 
 
+@network_creators.register('ugan')
 class UGANCreator(NetworkCreator):
     def __init__(self):
         super().__init__()
@@ -18,6 +19,3 @@ class UGANCreator(NetworkCreator):
         discriminator = Discriminator(cfg['channels'])
         net = {'G': generator, 'D': discriminator}
         return net
-
-
-register_network_creator('ugan', UGANCreator)
