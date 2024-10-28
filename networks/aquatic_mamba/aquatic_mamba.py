@@ -8,6 +8,7 @@ from timm.models.layers import trunc_normal_,to_2tuple
 
 from .gma import GmaBlock
 from .vss import VssBlock
+from networks.condconv import CondConv2D
 from utils import get_norm_layer
 
 
@@ -226,6 +227,28 @@ class CDAM(nn.Module):
 
         return x
 
+
+class AAM(nn.Module):
+    """Adaptive adjustment module"""
+    def __init__(self, input_channels, squeeze_channels, **kwargs):
+        super().__init__()
+        self.factor_generator = nn.Sequential(
+            nn.Conv2d(input_channels, input_channels, 3, 1, 1),
+            nn.Conv2d(input_channels, squeeze_channels, 1),
+            nn.ReLU(),
+            nn.Conv2d(squeeze_channels, input_channels, 1),
+            nn.Sigmoid()
+        )
+        self.condconv = CondConv2D(input_channels, input_channels, 3, 1, 1)
+
+    def forward(self, x):
+        # shape of x: (B, H, W, C)
+        alpha = self.factor_generator(x.permute(0,3,1,2)).permute(0,2,3,1)
+        x_e = self.condconv(x.permute(0,3,1,2)).permute(0,2,3,1)
+        # shape of output: (B, H, W, C)
+        return alpha * x_e + (1 - alpha) * x
+
+
 class AquaticMambaNet(nn.Module):
     def __init__(self, img_size=256, patch_size=4, in_chans=3, out_chans=3,
                  depths_down=[2, 2, 6, 2], depths_up=[2, 6, 2, 2],
@@ -300,6 +323,10 @@ class AquaticMambaNet(nn.Module):
             if i_layer > 0:
                 self.upsample_layers.append(PatchExpand2D(dims_up[i_layer], norm_layer=norm_layer))
 
+        self.use_aam = kwargs.get('use_aam', False)
+        if self.use_aam:
+            self.aam = AAM(dims_down[-1], dims_down[-1])
+
         self.final_up = FinalPatchExpand2D(dim=dims_up[-1], dim_scale=4, norm_layer=norm_layer)
         self.final_conv = nn.Conv2d(dims_up[-1]//4, out_chans, 1)
         self.final_output = nn.Sigmoid()
@@ -361,7 +388,10 @@ class AquaticMambaNet(nn.Module):
 
     def forward(self, x):
         x, skip_list = self.forward_features(x)
+        if self.use_aam:
+            x = self.aam(x)
         x = self.forward_features_up(x, skip_list)
+        x = x + skip_list[0]
         x = self.forward_final(x)
         x = self.final_output(x)
         
