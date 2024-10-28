@@ -9,6 +9,7 @@ class Registry:
     def register(self, name: str):
         def _register(module: type):
             self.module_dict[name] = module
+            return module
         return _register
     
     def get(self, name: str):
