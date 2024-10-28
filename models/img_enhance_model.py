@@ -570,11 +570,10 @@ class AquaticMamba(ImgEnhanceModel):
             loss['total'] += loss['contrast']
 
     def _set_optimizer(self):
+        params = [{'params': self.network.parameters()}, ]
         if self.use_contrast_loss:
-            params = [
-                {'params': self.network.parameters()}, 
-                {'params': self.contrast_loss_fn.parameters()} ]
-        else:
+            params.append({'params': self.contrast_loss_fn.parameters()})
+        if len(params) == 1:
             params = self.network.parameters()
         optimizer = self.cfg['optimizer']
         if optimizer['name'] == 'adam':
