@@ -5,10 +5,14 @@ import torch.nn.functional as F
 import os
 import numpy as np
 import time
+import sys
+import yaml
+import random
 from torch import Tensor
 from typing import Union, Dict
 from kornia.losses import SSIMLoss, PSNRLoss
 from kornia.metrics import psnr, ssim
+from torch.utils.tensorboard import SummaryWriter
 
 from torch.utils.data import DataLoader
 from torchvision.utils import save_image
@@ -17,39 +21,68 @@ import torch
 import cv2
 import shutil
 
+from networks import create_network
+from utils import seed_everything
 from .base_model import BaseModel
 from losses import (
     L1CharbonnierLoss, FourDomainLoss, 
     EdgeLoss, FourDomainLoss2, FourDomainLoss3,
     S3IM, ContrastLoss
 )
+from models import _models
 
 
+@_models.register('ie')
 class ImgEnhanceModel(BaseModel):
-    """
-    """
+    """Image Enhance Model."""
     def __init__(self, cfg: Dict):
         super().__init__(cfg)
+
+    def setup(self):
+        self.name = self.cfg['name']
+        self.model_name = self.cfg['model_name']
+        self.mode = self.cfg['mode']
+        self.device = torch.device(self.cfg.get('device', 'cpu'))
+        self._set_network()
+        
+        self.checkpoint_dir = os.path.join(
+            self.cfg['ckpt_dir'], self.model_name, self.net_name, self.name)
+        self._set_logger()
+        self.network_state_dir = os.path.join(self.checkpoint_dir, 'network')
+        os.makedirs(self.network_state_dir, exist_ok=True)
+        
         if self.mode == 'train':
-            os.makedirs(os.path.join(self.checkpoint_dir, 'network'), exist_ok=True)
+            self.seed = self.cfg.get('seed', random.randint(0, 100000))
+            self.sample_dir = os.path.join(self.checkpoint_dir, 'samples')
+            os.makedirs(self.sample_dir, exist_ok=True)
+            self.start_epoch = self.cfg['start_epoch']
+            self.start_iteration = self.cfg['start_iteration']
+            self.num_epochs = self.cfg['num_epochs']
+            self.val_interval = self.cfg['val_interval']
+            self.ckpt_interval = self.cfg['ckpt_interval']
             # Set Loss function
             self._set_loss_fn()
             # Set optimizers
             self._set_optimizer()
-            os.makedirs(os.path.join(self.checkpoint_dir, 'optimizer'), exist_ok=True)
+            self.optimizer_state_dir = os.path.join(self.checkpoint_dir, 'optimizer')
+            os.makedirs(self.optimizer_state_dir, exist_ok=True)
             # Set lr_scheduler
             self._set_lr_scheduler()
-            os.makedirs(os.path.join(self.checkpoint_dir, 'lr_scheduler'), exist_ok=True)
+            self.lr_scheduler_state_dir = os.path.join(self.checkpoint_dir, 'lr_scheduler')
+            os.makedirs(self.lr_scheduler_state_dir, exist_ok=True)
             self.train_loss = {}
             self.val_loss = {}
             self.train_metrics = {}
             self.val_metrics = {}
+            self.tensorboard_log_dir = os.path.join(self.checkpoint_dir, 'tb')
+            os.makedirs(self.tensorboard_log_dir, exist_ok=True)
+            self.tb_writer = SummaryWriter(log_dir=self.tensorboard_log_dir)
         elif self.mode == 'test':
-            self.checkpoint_dir = cfg['checkpoint_dir']
-            self.result_dir = cfg['result_dir']
+            self.result_dir = os.path.join(
+                self.cfg['result_dir'], self.model_name, self.net_name, self.name)
         
     def load_network_state(self, state_name: str):
-        state_path = os.path.join(self.checkpoint_dir, 'network', state_name)
+        state_path = os.path.join(self.network_state_dir, state_name)
         self.network.load_state_dict(torch.load(state_path, weights_only=True))
         if self.logger:
             self.logger.info('Loaded network weights from {}.'.format(
@@ -57,7 +90,7 @@ class ImgEnhanceModel(BaseModel):
             ))
 
     def load_optimizer_state(self, state_name: str):
-        state_path = os.path.join(self.checkpoint_dir, 'optimizer', state_name)
+        state_path = os.path.join(self.optimizer_state_dir, state_name)
         self.optimizer.load_state_dict(torch.load(state_path, weights_only=True))
         if self.logger:
             self.logger.info('Loaded optimizer state from {}.'.format(
@@ -65,25 +98,37 @@ class ImgEnhanceModel(BaseModel):
             ))
 
     def load_lr_scheduler_state(self, state_name: str):
-        state_path = os.path.join(self.checkpoint_dir, 'lr_scheduler', state_name)
+        state_path = os.path.join(self.lr_scheduler_state_dir, state_name)
         self.lr_scheduler.load_state_dict(torch.load(state_path, weights_only=True))
         if self.logger:
             self.logger.info('Loaded lr_scheduler state from {}.'.format(
                 state_path
             ))
 
+    def _set_network(self):
+        with open(self.cfg.get('net_cfg')) as f:
+            self.net_cfg = yaml.load(f, yaml.FullLoader)
+        self.net_name = self.net_cfg['name']
+        self.network = create_network(self.net_cfg)
+        if isinstance(self.network, dict):
+            for label in self.network:
+                self.network[label].to(self.device)
+        else:
+            self.network.to(self.device)
+
     def _set_optimizer(self):
         params = self.network.parameters()
         optimizer = self.cfg['optimizer']
-        if optimizer['name'] == 'adam':
-            self.optimizer = torch.optim.Adam(params, lr=optimizer['lr'])
-        elif optimizer['name'] == 'sgd':
-            self.optimizer = torch.optim.SGD(params, lr=optimizer['lr'])
+        if optimizer == 'adam':
+            self.optimizer = torch.optim.Adam(params, lr=self.cfg['lr'])
+        elif optimizer == 'sgd':
+            self.optimizer = torch.optim.SGD(params, lr=self.cfg['lr'])
         else:
-            assert f"<{optimizer['name']}> is supported!"
+            assert f"<{optimizer}> is supported!"
 
     def _set_lr_scheduler(self):
-        lr_scheduler = self.cfg['lr_scheduler']
+        with open(self.cfg['lr_scheduler_cfg']) as f:
+            lr_scheduler = yaml.load(f, yaml.FullLoader)
         if lr_scheduler['name'] == 'none':
             self.lr_scheduler = None
         elif lr_scheduler['name'] == 'step_lr':
@@ -92,6 +137,20 @@ class ImgEnhanceModel(BaseModel):
         else:
             assert f"<{lr_scheduler['name']}> is supported!"
 
+    def _set_logger(self):
+        from loguru import logger
+        from utils import LOGURU_FORMAT
+        logger.remove(0)
+        if not self.cfg.get('quite', False):
+            logger.add(sys.stdout, format=LOGURU_FORMAT)
+        if self.mode == 'train':
+            self.log_dir = os.path.join(self.checkpoint_dir, 'logs/train')
+        elif self.mode == 'test':
+            self.log_dir = os.path.join(self.checkpoint_dir, 'logs/test')
+        os.makedirs(self.log_dir, exist_ok=True)
+        logger.add(os.path.join(self.log_dir, "{time}.log"), format=LOGURU_FORMAT)
+        self.logger = logger
+        
     def _set_loss_fn(self):
         self.mae_loss_fn = nn.L1Loss(reduction=self.cfg['l1_reduction']).to(self.device)
         self.ssim_loss_fn = SSIMLoss(11).to(self.device)
@@ -116,6 +175,18 @@ class ImgEnhanceModel(BaseModel):
 
     def train(self, train_dl: DataLoader, val_dl: DataLoader):
         assert self.mode == 'train', f"The mode must be 'train', but got {self.mode}"
+        seed_everything(self.seed)
+
+        if not self.logger is None:
+            self.logger.info(f"Starting Training Process...")
+            self.logger.info(f"model_name: {self.model_name}")
+            self.logger.info(f"mode: {self.mode}")
+            self.logger.info(f"device: {self.device}")
+            self.logger.info(f"checkpoint_dir: {self.checkpoint_dir}")
+            self.logger.info(f"net_cfg: {self.cfg['net_cfg']}")
+            for k, v in self.net_cfg.items():
+                self.logger.info(f"  {k}: {v}")
+
         if self.start_epoch > 0:
             load_prefix = self.cfg.get('load_prefix', None)
             if load_prefix:
@@ -139,14 +210,14 @@ class ImgEnhanceModel(BaseModel):
                     val_batch = next(iter(val_dl))
                     self.validate_one_batch(val_batch, iteration_index)
                     self.write_tensorboard(iteration_index)
-
-                    self.logger.info(
-                        "[iteration: {:d}, lr: {:f}] [Epoch {:d}/{:d}, batch {:d}/{:d}] "
-                        "[train_loss: {:.3f}, val_loss: {:.3f}]".format(
-                            iteration_index, self.optimizer.param_groups[0]['lr'],
-                            epoch, self.start_epoch + self.num_epochs-1, i, len(train_dl)-1,
-                            self.train_loss['total'].item(), self.val_loss['total'].item()
-                    ))
+                    if not self.logger is None:
+                        self.logger.info(
+                            "[iteration: {:d}, lr: {:f}] [Epoch {:d}/{:d}, batch {:d}/{:d}] "
+                            "[train_loss: {:.3f}, val_loss: {:.3f}]".format(
+                                iteration_index, self.optimizer.param_groups[0]['lr'],
+                                epoch, self.start_epoch + self.num_epochs-1, i, len(train_dl)-1,
+                                self.train_loss['total'].item(), self.val_loss['total'].item()
+                        ))
                 iteration_index += 1
             # adjust lr
             self.adjust_lr()
@@ -193,9 +264,9 @@ class ImgEnhanceModel(BaseModel):
         if not save_prefix:
             save_prefix = load_prefix
         if save_prefix:
-            saved_path = os.path.join(self.checkpoint_dir, 'network', "{}_{:d}.pth".format(save_prefix, epoch))
+            saved_path = os.path.join(self.network_state_dir, "{}_{:d}.pth".format(save_prefix, epoch))
         else:
-            saved_path = os.path.join(self.checkpoint_dir, 'network', "{:d}.pth".format(epoch))
+            saved_path = os.path.join(self.network_state_dir, "{:d}.pth".format(epoch))
         torch.save(self.network.state_dict(), saved_path)
         if self.logger:
             self.logger.info("Saved network weights into {}".format(saved_path))
@@ -206,9 +277,9 @@ class ImgEnhanceModel(BaseModel):
         if not save_prefix:
             save_prefix = load_prefix
         if save_prefix:
-            saved_path = os.path.join(self.checkpoint_dir, 'optimizer', "{}_{:d}.pth".format(save_prefix, epoch))
+            saved_path = os.path.join(self.optimizer_state_dir, "{}_{:d}.pth".format(save_prefix, epoch))
         else:
-            saved_path = os.path.join(self.checkpoint_dir, 'optimizer', "{:d}.pth".format(epoch))
+            saved_path = os.path.join(self.optimizer_state_dir, "{:d}.pth".format(epoch))
         torch.save(self.optimizer.state_dict(), saved_path)
         if self.logger:
             self.logger.info("Saved optimizer state into {}".format(saved_path))
@@ -244,13 +315,24 @@ class ImgEnhanceModel(BaseModel):
     
     def test(self, test_dl: DataLoader, epoch: int, test_name: str, load_prefix=None):
         assert self.mode == 'test', f"The mode must be 'test', but got {self.mode}"
+
+        if not self.logger is None:
+            self.logger.info(f"Starting Test Process...")
+            self.logger.info(f"model_name: {self.model_name}")
+            self.logger.info(f"mode: {self.mode}")
+            self.logger.info(f"device: {self.device}")
+            self.logger.info(f"checkpoint_dir: {self.checkpoint_dir}")
+            self.logger.info(f"net_cfg: {self.cfg['net_cfg']}")
+            for k, v in self.net_cfg.items():
+                self.logger.info(f"  {k}: {v}")
+
         
         weights_name = f"{load_prefix}_{epoch}" if load_prefix else f"{epoch}"
         self.load_network_state(f"{weights_name}.pth")
         result_dir = os.path.join(self.result_dir, test_name, weights_name)
         if os.path.exists(result_dir):
             shutil.rmtree(result_dir)
-        os.makedirs(result_dir)
+        os.makedirs(result_dir, exist_ok=True)
         os.makedirs(os.path.join(result_dir, 'paired'))
         os.makedirs(os.path.join(result_dir, 'single/input'))
         os.makedirs(os.path.join(result_dir, 'single/predicted'))
@@ -316,6 +398,7 @@ class ImgEnhanceModel(BaseModel):
         return full_img
     
 
+@_models.register('ie2')
 class ImgEnhanceModel2(ImgEnhanceModel):
     def _set_loss_fn(self):
         self.l1charbonnier_loss_fn = L1CharbonnierLoss().to(self.device)
@@ -335,6 +418,7 @@ class ImgEnhanceModel2(ImgEnhanceModel):
             self.lambda_psnr * loss['psnr']
 
 
+@_models.register('ie3')
 class ImgEnhanceModel3(ImgEnhanceModel):
     def _set_loss_fn(self):
         self.mae_loss_fn = nn.L1Loss(reduction=self.cfg['l1_reduction']).to(self.device)
@@ -358,6 +442,7 @@ class ImgEnhanceModel3(ImgEnhanceModel):
             self.lambda_four * loss['four']
 
 
+@_models.register('ie4')
 class ImgEnhanceModel4(ImgEnhanceModel):
     def _set_loss_fn(self):
         self.mae_loss_fn = nn.L1Loss(reduction=self.cfg['l1_reduction']).to(self.device)
@@ -385,6 +470,7 @@ class ImgEnhanceModel4(ImgEnhanceModel):
             self.lambda_edge * loss['edge']
 
 
+@_models.register('ie5')
 class ImgEnhanceModel5(ImgEnhanceModel):
     def _set_loss_fn(self):
         self.mae_loss_fn = nn.L1Loss(reduction=self.cfg['l1_reduction']).to(self.device)
@@ -412,6 +498,7 @@ class ImgEnhanceModel5(ImgEnhanceModel):
             self.lambda_edge * loss['edge']
         
 
+@_models.register('ie6')
 class ImgEnhanceModel6(ImgEnhanceModel):
     def _set_loss_fn(self):
         self.mae_loss_fn = nn.L1Loss(reduction=self.cfg['l1_reduction']).to(self.device)
@@ -436,6 +523,7 @@ class ImgEnhanceModel6(ImgEnhanceModel):
             self.lambda_four * loss['four']
         
 
+@_models.register('ie7')
 class ImgEnhanceModel7(ImgEnhanceModel):
     def _set_loss_fn(self):
         self.mae_loss_fn = nn.L1Loss(reduction=self.cfg['l1_reduction']).to(self.device)
@@ -540,6 +628,7 @@ class ImgEnhanceModel7(ImgEnhanceModel):
             )
 
 
+@_models.register('ie8')
 class ImgEnhanceModel8(ImgEnhanceModel7):
     def _set_loss_fn(self):
         self.mae_loss_fn = nn.L1Loss(reduction=self.cfg['l1_reduction']).to(self.device)
@@ -549,6 +638,8 @@ class ImgEnhanceModel8(ImgEnhanceModel7):
         self.lambda_ssim = self.cfg['lambda_ssim']
         self.lambda_four = self.cfg['lambda_four']
 
+
+@_models.register('aqmamba')
 class AquaticMamba(ImgEnhanceModel):
     def _set_loss_fn(self):
         self.mae_loss_fn = nn.L1Loss(reduction=self.cfg['l1_reduction']).to(self.device)
@@ -576,9 +667,9 @@ class AquaticMamba(ImgEnhanceModel):
         if len(params) == 1:
             params = self.network.parameters()
         optimizer = self.cfg['optimizer']
-        if optimizer['name'] == 'adam':
-            self.optimizer = torch.optim.Adam(params, lr=optimizer['lr'])
-        elif optimizer['name'] == 'sgd':
-            self.optimizer = torch.optim.SGD(params, lr=optimizer['lr'])
+        if optimizer == 'adam':
+            self.optimizer = torch.optim.Adam(params, lr=self.cfg['lr'])
+        elif optimizer == 'sgd':
+            self.optimizer = torch.optim.SGD(params, lr=self.cfg['lr'])
         else:
-            assert f"<{optimizer['name']}> is supported!"
+            assert f"<{optimizer}> is supported!"

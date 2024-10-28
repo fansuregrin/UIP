@@ -15,8 +15,10 @@ from typing import Any, Dict, Union
 
 from losses import SemanticContentLoss as PerceptrualLoss
 from .base_model import BaseModel
+from models import _models
 
 
+@_models.register('waternet')
 class WaterNetModel(BaseModel):
     def __init__(self, cfg: Dict[str, Any]):
         super().__init__(cfg)

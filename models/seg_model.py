@@ -16,8 +16,10 @@ from kornia.metrics import mean_iou
 from typing import Dict
 
 from .base_model import BaseModel
+from models import _models
 
 
+@_models.register('seg')
 class SegModel(BaseModel):
     def __init__(self, cfg: Dict):
         super().__init__(cfg)

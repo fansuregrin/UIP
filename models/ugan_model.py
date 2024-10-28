@@ -16,8 +16,10 @@ from typing import Dict, Union
 
 from .base_model import BaseModel
 from networks.ugan import Gradient_Penalty, Gradient_Difference_Loss
+from models import _models
 
 
+@_models.register('ugan')
 class UGAN_Model(BaseModel):
     def __init__(self, cfg: Dict):
         super().__init__(cfg)

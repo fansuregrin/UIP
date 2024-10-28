@@ -17,8 +17,10 @@ from typing import Dict, Union
 
 from .base_model import BaseModel
 from losses import LABLoss, LCHLoss, VGG19_PercepLoss
+from models import _models
 
 
+@_models.register('utuie')
 class UTUIE(BaseModel):
     def __init__(self, cfg: Dict):
         super().__init__(cfg)
