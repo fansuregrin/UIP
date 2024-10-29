@@ -133,14 +133,15 @@ class ImgEnhanceModel(BaseModel):
 
     def _set_lr_scheduler(self):
         with open(self.cfg['lr_scheduler_cfg']) as f:
-            lr_scheduler = yaml.load(f, yaml.FullLoader)
-        if lr_scheduler['name'] == 'none':
+            _cfg = yaml.load(f, yaml.FullLoader)
+        if _cfg['name'] == 'none':
             self.lr_scheduler = None
-        elif lr_scheduler['name'] == 'step_lr':
-            self.lr_scheduler = optim.lr_scheduler.StepLR(self.optimizer, lr_scheduler['step_size'],
-                                                          lr_scheduler['gamma'])
+        elif _cfg['name'] == 'step_lr':
+            self.lr_scheduler = optim.lr_scheduler.StepLR(self.optimizer, _cfg['step_size'],
+                                                          _cfg['gamma'])
         else:
-            assert f"<{lr_scheduler['name']}> is supported!"
+            assert f"<{_cfg['name']}> is supported!"
+        self.lr_scheduler_cfg = _cfg
 
     def _set_logger(self):
         from loguru import logger
@@ -204,16 +205,18 @@ class ImgEnhanceModel(BaseModel):
 
     def train(self):
         assert self.mode == 'train', f"The mode must be 'train', but got {self.mode}"
+        
         seed_everything(self.seed)
 
         if not self.logger is None:
             self.logger.info(f"Starting Training Process...")
-            self.logger.info(f"model_name: {self.model_name}")
-            self.logger.info(f"mode: {self.mode}")
-            self.logger.info(f"device: {self.device}")
-            self.logger.info(f"checkpoint_dir: {self.checkpoint_dir}")
-            self.logger.info(f"net_cfg: {self.cfg['net_cfg']}")
+            for k, v in self.cfg.items():
+                self.logger.info(f"{k}: {v}")
+            self.logger.info("network config details:")
             for k, v in self.net_cfg.items():
+                self.logger.info(f"  {k}: {v}")
+            self.logger.info("lr_scheduler config details:")
+            for k, v in self.lr_scheduler_cfg:
                 self.logger.info(f"  {k}: {v}")
 
         if self.start_epoch > 0:
@@ -228,6 +231,7 @@ class ImgEnhanceModel(BaseModel):
                 self.load_network_state(state_name)
                 self.load_optimizer_state(state_name)
                 self.load_lr_scheduler_state(state_name)
+        
         iteration_index = self.start_iteration
         for epoch in range(self.start_epoch, self.start_epoch + self.num_epochs):
             for i, batch in enumerate(self.train_dl):

@@ -10,13 +10,15 @@ class BaseArgParser:
     def setup(self):
         self.parser = ArgumentParser()
         self.parser.add_argument('--model_name', type=str, required=True, help='name of the model')
-        self.parser.add_argument('--device', type=str, default='cuda', help='the device on which a tensor is or will be allocated')
-        self.parser.add_argument('--ckpt_dir', type=str, default='checkpoints', help='')
-        self.parser.add_argument('--quite', action='store_true', help='do not print anything to stdout')
+        self.parser.add_argument('--device', type=str, default='cuda',
+                                 help='the device on which a tensor is or will be allocated')
+        self.parser.add_argument('--ckpt_dir', type=str, default='checkpoints', 
+                                 help='the directory saves the state of the network, optimizer, learning rate scheduler, etc')
+        self.parser.add_argument('--quite', action='store_true', help='do not print message to stdout')
         self.parser.add_argument('--name', type=str, default='experiment', help='name of training process')
-        self.parser.add_argument('--net_cfg', type=str, default='configs/network/unet_01.yaml')
-        self.parser.add_argument('--ds_cfg', type=str, default='configs/dataset/lsui.yaml')
-        self.parser.add_argument('--batch_size', type=int, default=8, help='size of batches')
+        self.parser.add_argument('--net_cfg', type=str, required=True, help='path to network config file')
+        self.parser.add_argument('--ds_cfg', type=str, required=True, help='path to dataset config file')
+        self.parser.add_argument('--batch_size', type=int, default=8, help='the batch size')
         self.parser.add_argument('--shuffle', action='store_true', help='shuffle the data at each epoch')
         self.parser.add_argument('--num_workers', type=int, default=4, help='how many subprocesses to use for data loading')
         self.parser.add_argument('--drop_last', action='store_true', help='drop the last incomplete batch, if the dataset size is not divisible by the batch size')
@@ -36,7 +38,7 @@ class TrainArgParser(BaseArgParser):
 
     def setup(self):
         super().setup()
-        self.parser.add_argument('--mode', type=str, default='train', help='')
+        self.parser.add_argument('--mode', type=str, default='train', choices=['train'])
         self.parser.add_argument('--lr_scheduler_cfg', type=str, default='configs/lr_scheduler/none.yaml')
         self.parser.add_argument('--start_epoch', type=int, default=0, help='which epoch to start from')
         self.parser.add_argument('--start_iteration', type=int, default=0, help='which iteration to start from')
@@ -56,7 +58,7 @@ class TestArgParser(BaseArgParser):
 
     def setup(self):
         super().setup()
-        self.parser.add_argument('--mode', type=str, default='test', help='')
+        self.parser.add_argument('--mode', type=str, default='test', choices=['test'])
         self.parser.add_argument('--test_name', type=str, help='name for test dataset')
         self.parser.add_argument('--checkpoint_dir', type=str, default='checkpoints', help='path to checkpoint dir')
         self.parser.add_argument("--result_dir", type=str, default="results")
