@@ -22,6 +22,7 @@ import cv2
 import shutil
 
 from networks import create_network
+from data import create_dataset, create_dataloader
 from utils import seed_everything
 from .base_model import BaseModel
 from losses import (
@@ -44,6 +45,7 @@ class ImgEnhanceModel(BaseModel):
         self.mode = self.cfg['mode']
         self.device = torch.device(self.cfg.get('device', 'cpu'))
         self._set_network()
+        self._set_data()
         
         self.checkpoint_dir = os.path.join(
             self.cfg['ckpt_dir'], self.model_name, self.net_name, self.name)
@@ -80,6 +82,9 @@ class ImgEnhanceModel(BaseModel):
         elif self.mode == 'test':
             self.result_dir = os.path.join(
                 self.cfg['result_dir'], self.model_name, self.net_name, self.name)
+            self.epochs = self.cfg['epochs']
+            self.test_name = self.cfg['test_name']
+            self.load_prefix = self.cfg['load_prefix']
         
     def load_network_state(self, state_name: str):
         state_path = os.path.join(self.network_state_dir, state_name)
@@ -159,6 +164,30 @@ class ImgEnhanceModel(BaseModel):
         self.lambda_ssim = self.cfg['lambda_ssim']
         self.lambda_psnr = self.cfg['lambda_psnr']
     
+    def _set_data(self):
+        self.train_dl = None
+        self.val_dl = None
+        self.test_dl = None
+        with open(self.cfg['ds_cfg']) as f:
+            ds_cfg = yaml.load(f, yaml.FullLoader)
+        dl_cfg = {
+            'batch_size': self.cfg.get('batch_size', 1),
+            'shuffle': self.cfg.get('shuffle', True),
+            'num_workers': self.cfg.get('num_workers', 0),
+            'drop_last': self.cfg.get('drop_last', False)
+        }
+        if self.mode == 'train':
+            train_ds = create_dataset(ds_cfg['train'])
+            val_ds = create_dataset(ds_cfg['val'])
+            self.train_dl = create_dataloader(train_ds, dl_cfg)
+            self.val_dl = create_dataloader(val_ds, dl_cfg)
+        elif self.mode == 'test':
+            test_ds = create_dataset(ds_cfg['test'])
+            dl_cfg['shuffle'] = False
+            self.test_dl = create_dataloader(test_ds, dl_cfg)
+        else:
+            assert False,'invalid mode'
+
     def _calculate_loss(self, ref_imgs, pred_imgs, train=True):
         loss = self.train_loss if train else self.val_loss
         loss['mae'] = self.mae_loss_fn(pred_imgs, ref_imgs)
@@ -173,7 +202,7 @@ class ImgEnhanceModel(BaseModel):
         metrics['psnr'] = psnr(pred_imgs, ref_imgs, 1.0)
         metrics['ssim'] = ssim(pred_imgs, ref_imgs, 11).mean()
 
-    def train(self, train_dl: DataLoader, val_dl: DataLoader):
+    def train(self):
         assert self.mode == 'train', f"The mode must be 'train', but got {self.mode}"
         seed_everything(self.seed)
 
@@ -201,13 +230,13 @@ class ImgEnhanceModel(BaseModel):
                 self.load_lr_scheduler_state(state_name)
         iteration_index = self.start_iteration
         for epoch in range(self.start_epoch, self.start_epoch + self.num_epochs):
-            for i, batch in enumerate(train_dl):
+            for i, batch in enumerate(self.train_dl):
                 # train one batch
                 self.train_one_batch(batch)
                 
                 # validation
-                if (iteration_index % self.val_interval == 0) or (i == len(train_dl)-1):
-                    val_batch = next(iter(val_dl))
+                if (iteration_index % self.val_interval == 0) or (i == len(self.train_dl)-1):
+                    val_batch = next(iter(self.val_dl))
                     self.validate_one_batch(val_batch, iteration_index)
                     self.write_tensorboard(iteration_index)
                     if not self.logger is None:
@@ -215,7 +244,7 @@ class ImgEnhanceModel(BaseModel):
                             "[iteration: {:d}, lr: {:f}] [Epoch {:d}/{:d}, batch {:d}/{:d}] "
                             "[train_loss: {:.3f}, val_loss: {:.3f}]".format(
                                 iteration_index, self.optimizer.param_groups[0]['lr'],
-                                epoch, self.start_epoch + self.num_epochs-1, i, len(train_dl)-1,
+                                epoch, self.start_epoch + self.num_epochs-1, i, len(self.train_dl)-1,
                                 self.train_loss['total'].item(), self.val_loss['total'].item()
                         ))
                 iteration_index += 1
@@ -313,7 +342,11 @@ class ImgEnhanceModel(BaseModel):
             full_img = cv2.cvtColor(full_img, cv2.COLOR_RGB2BGR)
             cv2.imwrite(os.path.join(self.sample_dir, f'{iteration:06d}.png'), full_img)
     
-    def test(self, test_dl: DataLoader, epoch: int, test_name: str, load_prefix=None):
+    def test(self):
+        for epoch in self.epochs:
+            self.test_one_epoch(epoch, self.test_name, self.load_prefix)
+    
+    def test_one_epoch(self, epoch: int, test_name: str, load_prefix=None):
         assert self.mode == 'test', f"The mode must be 'test', but got {self.mode}"
 
         if not self.logger is None:
@@ -339,7 +372,7 @@ class ImgEnhanceModel(BaseModel):
 
         t_elapse_list = []
         idx = 1
-        for batch in tqdm(test_dl):
+        for batch in tqdm(self.test_dl):
             inp_imgs = batch['inp'].to(self.device)
             ref_imgs = batch['ref'].to(self.device) if 'ref' in batch else None
             img_names = batch['img_name']
@@ -397,6 +430,17 @@ class ImgEnhanceModel(BaseModel):
 
         return full_img
     
+    @staticmethod
+    def modify_args(parser, mode):
+        if mode == 'train':
+            parser.add_argument('--lambda_mae', type=float, default=1.0, help='weight of MAE loss')
+            parser.add_argument('--lambda_ssim', type=float, default=1.0, help='weight of SSIM loss')
+            parser.add_argument('--lambda_psnr', type=float, default=1.0, help='weight of PSNR loss')
+            parser.add_argument('--lambda_four', type=float, default=1.0, help='weight of FourDomain loss')
+            parser.add_argument('--lambda_edge', type=float, default=1.0, help='weight of Edge loss')
+            parser.add_argument('--l1_reduction', type=str, default='mean')
+        return parser
+
 
 @_models.register('ie2')
 class ImgEnhanceModel2(ImgEnhanceModel):
@@ -416,6 +460,14 @@ class ImgEnhanceModel2(ImgEnhanceModel):
         loss['total'] = self.lambda_l1charbonnier * loss['l1charbonnier'] + \
             self.lambda_ssim * loss['ssim'] +\
             self.lambda_psnr * loss['psnr']
+        
+    @staticmethod
+    def modify_args(parser, mode):
+        if mode == 'train':
+            parser.add_argument("--lambda_l1charbonnier", type=float, default=1.0, help="weight of L1 Charbonnier loss")
+            parser.add_argument('--lambda_ssim', type=float, default=1.0, help='weight of SSIM loss')
+            parser.add_argument('--lambda_psnr', type=float, default=1.0, help='weight of PSNR loss')
+        return parser
 
 
 @_models.register('ie3')
@@ -440,6 +492,16 @@ class ImgEnhanceModel3(ImgEnhanceModel):
             self.lambda_ssim * loss['ssim'] +\
             self.lambda_psnr * loss['psnr'] +\
             self.lambda_four * loss['four']
+        
+    @staticmethod
+    def modify_args(parser, mode):
+        if mode == 'train':
+            parser.add_argument("--lambda_mae", type=float, default=1.0, help="weight of MAE loss")
+            parser.add_argument("--lambda_ssim", type=float, default=1.0, help="weight of SSIM loss")
+            parser.add_argument("--lambda_psnr", type=float, default=1.0, help="weight of PSNR loss")
+            parser.add_argument("--lambda_four", type=float, default=1.0, help="weight of FourDomain loss")
+            parser.add_argument("--l1_reduction", type=str, default='mean')
+        return parser
 
 
 @_models.register('ie4')
@@ -469,6 +531,17 @@ class ImgEnhanceModel4(ImgEnhanceModel):
             self.lambda_four * loss['four'] +\
             self.lambda_edge * loss['edge']
 
+    @staticmethod
+    def modify_args(parser, mode):
+        if mode == 'train':
+            parser.add_argument("--lambda_mae", type=float, default=1.0, help="weight of MAE loss")
+            parser.add_argument("--lambda_ssim", type=float, default=1.0, help="weight of SSIM loss")
+            parser.add_argument("--lambda_psnr", type=float, default=1.0, help="weight of PSNR loss")
+            parser.add_argument("--lambda_four", type=float, default=1.0, help="weight of FourDomain loss")
+            parser.add_argument("--lambda_edge", type=float, default=1.0, help="weight of Edge loss")
+            parser.add_argument("--l1_reduction", type=str, default='mean')
+        return parser
+
 
 @_models.register('ie5')
 class ImgEnhanceModel5(ImgEnhanceModel):
@@ -496,6 +569,17 @@ class ImgEnhanceModel5(ImgEnhanceModel):
             self.lambda_psnr * loss['psnr'] +\
             self.lambda_four * loss['four'] +\
             self.lambda_edge * loss['edge']
+    
+    @staticmethod
+    def modify_args(parser, mode):
+        if mode == 'train':
+            parser.add_argument("--lambda_mae", type=float, default=1.0, help="weight of MAE loss")
+            parser.add_argument("--lambda_ssim", type=float, default=1.0, help="weight of SSIM loss")
+            parser.add_argument("--lambda_psnr", type=float, default=1.0, help="weight of PSNR loss")
+            parser.add_argument("--lambda_four", type=float, default=1.0, help="weight of FourDomain loss")
+            parser.add_argument("--lambda_edge", type=float, default=1.0, help="weight of Edge loss")
+            parser.add_argument("--l1_reduction", type=str, default='mean')
+        return parser
         
 
 @_models.register('ie6')
@@ -521,6 +605,18 @@ class ImgEnhanceModel6(ImgEnhanceModel):
         loss['total'] = self.lambda_mae * loss['mae'] + \
             self.lambda_s3im * loss['s3im'] +\
             self.lambda_four * loss['four']
+        
+    @staticmethod
+    def modify_args(parser, mode):
+        if mode == 'train':
+            parser.add_argument("--lambda_mae", type=float, default=1.0, help="weight of MAE loss")
+            parser.add_argument("--lambda_s3im", type=float, default=1.0, help="weight of S3IM loss")
+            parser.add_argument("--lambda_four", type=float, default=1.0, help="weight of FourDomain loss")
+            parser.add_argument("--repeat_time", type=int, default=10, help="repeat time for calculating S3IM Loss")
+            parser.add_argument("--patch_height", type=int, default=512, help="patch height for calculating S3IM Loss")
+            parser.add_argument("--patch_width", type=int, default=512, help="patch width for calculating S3IM Loss")
+            parser.add_argument("--l1_reduction", type=str, default='mean')
+        return parser
         
 
 @_models.register('ie7')
@@ -627,6 +723,15 @@ class ImgEnhanceModel7(ImgEnhanceModel):
                 )
             )
 
+    @staticmethod
+    def modify_args(parser, mode):
+        if mode == 'train':
+            parser.add_argument("--lambda_mae", type=float, default=1.0, help="weight of MAE loss")
+            parser.add_argument("--lambda_ssim", type=float, default=1.0, help="weight of SSIM loss")
+            parser.add_argument("--lambda_four", type=float, default=1.0, help="weight of FourDomain loss")
+            parser.add_argument("--l1_reduction", type=str, default='mean')
+        return parser
+
 
 @_models.register('ie8')
 class ImgEnhanceModel8(ImgEnhanceModel7):
@@ -637,6 +742,15 @@ class ImgEnhanceModel8(ImgEnhanceModel7):
         self.lambda_mae  = self.cfg['lambda_mae']
         self.lambda_ssim = self.cfg['lambda_ssim']
         self.lambda_four = self.cfg['lambda_four']
+
+    @staticmethod
+    def modify_args(parser, mode):
+        if mode == 'train':
+            parser.add_argument("--lambda_mae", type=float, default=1.0, help="weight of MAE loss")
+            parser.add_argument("--lambda_ssim", type=float, default=1.0, help="weight of SSIM loss")
+            parser.add_argument("--lambda_four", type=float, default=1.0, help="weight of FourDomain loss")
+            parser.add_argument("--l1_reduction", type=str, default='mean')
+        return parser
 
 
 @_models.register('aqmamba')
@@ -673,3 +787,12 @@ class AquaticMamba(ImgEnhanceModel):
             self.optimizer = torch.optim.SGD(params, lr=self.cfg['lr'])
         else:
             assert f"<{optimizer}> is supported!"
+
+    @staticmethod
+    def modify_args(parser, mode):
+        if mode == 'train':
+            parser.add_argument("--use_contrast_loss", action='store_true', help="whether use contrast loss function")
+            parser.add_argument("--lambda_mae", type=float, default=1.0, help="weight of MAE loss")
+            parser.add_argument("--lambda_ssim", type=float, default=1.0, help="weight of SSIM loss")
+            parser.add_argument("--l1_reduction", type=str, default='mean')
+        return parser

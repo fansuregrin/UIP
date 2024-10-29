@@ -1,5 +1,10 @@
 import os
+import random
+import sys
 import shutil
+import yaml
+import time
+from typing import Dict, Union
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -7,43 +12,76 @@ import torch.nn.functional as F
 import cv2
 import numpy as np
 from tqdm import tqdm
-import time
 from torch import Tensor
 from torch.utils.data import DataLoader
+from torch.utils.tensorboard import SummaryWriter
 from torchvision.utils import save_image
 from kornia.metrics import psnr, ssim
 from kornia.losses import SSIMLoss
-from typing import Dict, Union
 
 from .base_model import BaseModel
 from losses import LABLoss, LCHLoss, VGG19_PercepLoss
 from models import _models
+from networks import create_network
+from data import create_dataloader, create_dataset
+from utils import seed_everything
 
 
 @_models.register('utuie')
 class UTUIE(BaseModel):
     def __init__(self, cfg: Dict):
         super().__init__(cfg)
+    
+    def setup(self):
+        self.name = self.cfg['name']
+        self.model_name = self.cfg['model_name']
+        self.mode = self.cfg['mode']
+        self.device = torch.device(self.cfg.get('device', 'cpu'))
+        self._set_network()
+        self._set_data()
+        
+        self.checkpoint_dir = os.path.join(
+            self.cfg['ckpt_dir'], self.model_name, self.net_name, self.name)
+        self._set_logger()
+        self.network_state_dir = os.path.join(self.checkpoint_dir, 'network')
+        os.makedirs(self.network_state_dir, exist_ok=True)
+        
         if self.mode == 'train':
-            os.makedirs(os.path.join(self.checkpoint_dir, 'network/G'), exist_ok=True)
-            os.makedirs(os.path.join(self.checkpoint_dir, 'network/D'), exist_ok=True)
+            self.seed = self.cfg.get('seed', random.randint(0, 100000))
+            self.sample_dir = os.path.join(self.checkpoint_dir, 'samples')
+            os.makedirs(self.sample_dir, exist_ok=True)
+            self.start_epoch = self.cfg['start_epoch']
+            self.start_iteration = self.cfg['start_iteration']
+            self.num_epochs = self.cfg['num_epochs']
+            self.val_interval = self.cfg['val_interval']
+            self.ckpt_interval = self.cfg['ckpt_interval']
+            os.makedirs(os.path.join(self.network_state_dir, 'G'), exist_ok=True)
+            os.makedirs(os.path.join(self.network_state_dir, 'D'), exist_ok=True)
             # Set optimizers
             self._set_optimizer()
-            os.makedirs(os.path.join(self.checkpoint_dir, 'optimizer/G'), exist_ok=True)
-            os.makedirs(os.path.join(self.checkpoint_dir, 'optimizer/D'), exist_ok=True)
+            self.optimizer_state_dir = os.path.join(self.checkpoint_dir, 'optimizer')
+            os.makedirs(os.path.join(self.optimizer_state_dir, 'G'), exist_ok=True)
+            os.makedirs(os.path.join(self.optimizer_state_dir, 'D'), exist_ok=True)
             # Set lr_scheduler
             self._set_lr_scheduler()
-            os.makedirs(os.path.join(self.checkpoint_dir, 'lr_scheduler/G'), exist_ok=True)
-            os.makedirs(os.path.join(self.checkpoint_dir, 'lr_scheduler/D'), exist_ok=True)
+            self.lr_scheduler_state_dir = os.path.join(self.checkpoint_dir, 'lr_scheduler')
+            os.makedirs(os.path.join(self.lr_scheduler_state_dir, 'G'), exist_ok=True)
+            os.makedirs(os.path.join(self.lr_scheduler_state_dir, 'D'), exist_ok=True)
             # Set Loss function
             self._set_loss_fn()
             self.train_loss = {}
             self.val_loss = {}
             self.train_metrics = {}
             self.val_metrics = {}
+            self.tensorboard_log_dir = os.path.join(self.checkpoint_dir, 'tb')
+            os.makedirs(self.tensorboard_log_dir, exist_ok=True)
+            self.tb_writer = SummaryWriter(log_dir=self.tensorboard_log_dir)
         elif self.mode == 'test':
-            self.checkpoint_dir = cfg['checkpoint_dir']
-            self.result_dir = cfg['result_dir']
+            self.result_dir = os.path.join(
+                self.cfg['result_dir'], self.model_name, self.net_name, self.name)
+            self.epochs = self.cfg['epochs']
+            self.test_name = self.cfg['test_name']
+            self.load_prefix = self.cfg['load_prefix']
 
     def split(self, img: torch.Tensor):
         output=[]
@@ -63,30 +101,31 @@ class UTUIE(BaseModel):
         self.vgg_loss_fn = VGG19_PercepLoss().to(self.device)
         self.lab_loss_fn = LABLoss().to(self.device)
         self.lch_loss_fn = LCHLoss().to(self.device)
-        self.lambda_pixel = 0.1
-        self.lambda_lab = 0.001
-        self.lambda_lch = 1
-        self.lambda_con = 100
-        self.lambda_ssim = 100
+        self.lambda_pixel = self.cfg['lambda_pixel']
+        self.lambda_lab = self.cfg['lambda_lab']
+        self.lambda_lch = self.cfg['lambda_lch']
+        self.lambda_con = self.cfg['lambda_con']
+        self.lambda_ssim = self.cfg['lambda_ssim']
 
     def _set_optimizer(self):
-        optimizer_cfg = self.cfg['optimizer']
+        optimizer = self.cfg['optimizer']
         self.optimizer = {}
-        if optimizer_cfg['name'] == 'adam':
+        if optimizer == 'adam':
             self.optimizer['G'] = torch.optim.Adam(
-                self.network['G'].parameters(), lr=optimizer_cfg['lr'])
+                self.network['G'].parameters(), lr=self.cfg['lr'])
             self.optimizer['D'] = torch.optim.Adam(
-                self.network['D'].parameters(), lr=optimizer_cfg['lr'])
-        elif optimizer_cfg['name'] == 'sgd':
+                self.network['D'].parameters(), lr=self.cfg['lr'])
+        elif optimizer == 'sgd':
             self.optimizer['G'] = torch.optim.SGD(
-                self.network['G'].parameters(), lr=optimizer_cfg['lr'])
+                self.network['G'].parameters(), lr=self.cfg['lr'])
             self.optimizer['D'] = torch.optim.SGD(
-                self.network['D'].parameters(), lr=optimizer_cfg['lr'])
+                self.network['D'].parameters(), lr=self.cfg['lr'])
         else:
-            assert f"<{optimizer_cfg['name']}> is supported!"
+            assert f"<{optimizer}> is supported!"
 
     def _set_lr_scheduler(self):
-        lr_scheduler_cfg = self.cfg['lr_scheduler']
+        with open(self.cfg['lr_scheduler_cfg']) as f:
+            lr_scheduler_cfg = yaml.load(f, yaml.FullLoader)
         self.lr_scheduler = {}
         if lr_scheduler_cfg['name'] == 'none':
             self.lr_scheduler['G'] = None
@@ -101,8 +140,57 @@ class UTUIE(BaseModel):
         else:
             assert f"<{lr_scheduler_cfg['name']}> is supported!"
 
+    def _set_network(self):
+        with open(self.cfg.get('net_cfg')) as f:
+            self.net_cfg = yaml.load(f, yaml.FullLoader)
+        self.net_name = self.net_cfg['name']
+        self.network = create_network(self.net_cfg)
+        if isinstance(self.network, dict):
+            for label in self.network:
+                self.network[label].to(self.device)
+        else:
+            self.network.to(self.device)
+
+    def _set_data(self):
+        self.train_dl = None
+        self.val_dl = None
+        self.test_dl = None
+        with open(self.cfg['ds_cfg']) as f:
+            ds_cfg = yaml.load(f, yaml.FullLoader)
+        dl_cfg = {
+            'batch_size': self.cfg.get('batch_size', 1),
+            'shuffle': self.cfg.get('shuffle', True),
+            'num_workers': self.cfg.get('num_workers', 0),
+            'drop_last': self.cfg.get('drop_last', False)
+        }
+        if self.mode == 'train':
+            train_ds = create_dataset(ds_cfg['train'])
+            val_ds = create_dataset(ds_cfg['val'])
+            self.train_dl = create_dataloader(train_ds, dl_cfg)
+            self.val_dl = create_dataloader(val_ds, dl_cfg)
+        elif self.mode == 'test':
+            test_ds = create_dataset(ds_cfg['test'])
+            dl_cfg['shuffle'] = False
+            self.test_dl = create_dataloader(test_ds, dl_cfg)
+        else:
+            assert False,'invalid mode'
+
+    def _set_logger(self):
+        from loguru import logger
+        from utils import LOGURU_FORMAT
+        logger.remove(0)
+        if not self.cfg.get('quite', False):
+            logger.add(sys.stdout, format=LOGURU_FORMAT)
+        if self.mode == 'train':
+            self.log_dir = os.path.join(self.checkpoint_dir, 'logs/train')
+        elif self.mode == 'test':
+            self.log_dir = os.path.join(self.checkpoint_dir, 'logs/test')
+        os.makedirs(self.log_dir, exist_ok=True)
+        logger.add(os.path.join(self.log_dir, "{time}.log"), format=LOGURU_FORMAT)
+        self.logger = logger
+
     def load_network_state(self, state_name: str, label: str):
-        state_path = os.path.join(self.checkpoint_dir, f'network/{label}', state_name)
+        state_path = os.path.join(self.network_state_dir, label, state_name)
         self.network[label].load_state_dict(torch.load(state_path))
         if self.logger:
             self.logger.info("Loaded network['{}'] weights from {}.".format(
@@ -110,7 +198,7 @@ class UTUIE(BaseModel):
             ))
 
     def load_optimizer_state(self, state_name: str, label: str):
-        state_path = os.path.join(self.checkpoint_dir, f'optimizer/{label}', state_name)
+        state_path = os.path.join(self.optimizer_state_dir, label, state_name)
         self.optimizer[label].load_state_dict(torch.load(state_path))
         if self.logger:
             self.logger.info("Loaded optimizer['{}'] state from {}.".format(
@@ -118,20 +206,33 @@ class UTUIE(BaseModel):
             ))
 
     def load_lr_scheduler_state(self, state_name: str, label: str):
-        state_path = os.path.join(self.checkpoint_dir, f'lr_scheduler/{label}', state_name)
+        state_path = os.path.join(self.lr_scheduler_state_dir, label, state_name)
         self.lr_scheduler[label].load_state_dict(torch.load(state_path))
         if self.logger:
             self.logger.info("Loaded lr_scheduler['{}'] state from {}.".format(
                 label, state_path
             ))
-        
+    
     def _calculate_metrics(self, ref_imgs, pred_imgs, train=True):
         metrics = self.train_metrics if train else self.val_metrics
         metrics['psnr'] = psnr(pred_imgs, ref_imgs, 1.0)
         metrics['ssim'] = ssim(pred_imgs, ref_imgs, 11).mean()
 
-    def train(self, train_dl: DataLoader, val_dl: DataLoader):
+    def train(self):
         assert self.mode == 'train', f"The mode must be 'train', but got {self.mode}"
+
+        seed_everything(self.seed)
+
+        if not self.logger is None:
+            self.logger.info(f"Starting Training Process...")
+            self.logger.info(f"model_name: {self.model_name}")
+            self.logger.info(f"mode: {self.mode}")
+            self.logger.info(f"device: {self.device}")
+            self.logger.info(f"checkpoint_dir: {self.checkpoint_dir}")
+            self.logger.info(f"net_cfg: {self.cfg['net_cfg']}")
+            for k, v in self.net_cfg.items():
+                self.logger.info(f"  {k}: {v}")
+
         if self.start_epoch > 0:
             load_prefix = self.cfg.get('load_prefix', None)
             if load_prefix:
@@ -148,13 +249,13 @@ class UTUIE(BaseModel):
                     self.load_lr_scheduler_state(state_name, label)
         iteration_index = self.start_iteration
         for epoch in range(self.start_epoch, self.start_epoch + self.num_epochs):
-            for i, batch in enumerate(train_dl):
+            for i, batch in enumerate(self.train_dl):
                 # train one batch
                 self.train_one_batch(batch)
                 
                 # validation
-                if (iteration_index % self.val_interval == 0) or (i == len(train_dl)-1):
-                    val_batch = next(iter(val_dl))
+                if (iteration_index % self.val_interval == 0) or (i == len(self.train_dl)-1):
+                    val_batch = next(iter(self.val_dl))
                     self.validate_one_batch(val_batch, iteration_index)
                     self.write_tensorboard(iteration_index)
 
@@ -162,7 +263,7 @@ class UTUIE(BaseModel):
                         "[iteration: {:d}, lr: {:f}] [Epoch {:d}/{:d}, batch {:d}/{:d}] "
                         "[train_loss: G:{:.3f}, D:{:.3f}, val_loss: G:{:.3f}, D:{:.3f}]".format(
                             iteration_index, self.optimizer['G'].param_groups[0]['lr'],
-                            epoch, self.start_epoch + self.num_epochs-1, i, len(train_dl)-1,
+                            epoch, self.start_epoch + self.num_epochs-1, i, len(self.train_dl)-1,
                             self.train_loss['loss_G'].item(), self.train_loss['loss_D'].item(),
                             self.val_loss['loss_G'].item(), self.val_loss['loss_D'].item()
                     ))
@@ -250,9 +351,9 @@ class UTUIE(BaseModel):
         if not save_prefix:
             save_prefix = load_prefix
         if save_prefix:
-            saved_path = os.path.join(self.checkpoint_dir, f'network/{label}', "{}_{:d}.pth".format(save_prefix, epoch))
+            saved_path = os.path.join(self.network_state_dir, label, "{}_{:d}.pth".format(save_prefix, epoch))
         else:
-            saved_path = os.path.join(self.checkpoint_dir, f'network/{label}', "{:d}.pth".format(epoch))
+            saved_path = os.path.join(self.network_state_dir, label, "{:d}.pth".format(epoch))
         torch.save(self.network[label].state_dict(), saved_path)
         if self.logger:
             self.logger.info("Saved network['{}'] weights into {}".format(label, saved_path))
@@ -263,9 +364,9 @@ class UTUIE(BaseModel):
         if not save_prefix:
             save_prefix = load_prefix
         if save_prefix:
-            saved_path = os.path.join(self.checkpoint_dir, f'optimizer/{label}', "{}_{:d}.pth".format(save_prefix, epoch))
+            saved_path = os.path.join(self.optimizer_state_dir, label, "{}_{:d}.pth".format(save_prefix, epoch))
         else:
-            saved_path = os.path.join(self.checkpoint_dir, f'optimizer/{label}', "{:d}.pth".format(epoch))
+            saved_path = os.path.join(self.optimizer_state_dir, label, "{:d}.pth".format(epoch))
         torch.save(self.optimizer[label].state_dict(), saved_path)
         if self.logger:
             self.logger.info("Saved optimizer['{}'] state into {}".format(label, saved_path))
@@ -278,9 +379,9 @@ class UTUIE(BaseModel):
         if not save_prefix:
             save_prefix = load_prefix
         if save_prefix:
-            saved_path = os.path.join(self.checkpoint_dir, f'lr_scheduler/{label}', "{}_{:d}.pth".format(save_prefix, epoch))
+            saved_path = os.path.join(self.lr_scheduler_state_dir, label, "{}_{:d}.pth".format(save_prefix, epoch))
         else:
-            saved_path = os.path.join(self.checkpoint_dir, f'lr_scheduler/{label}', "{:d}.pth".format(epoch))
+            saved_path = os.path.join(self.lr_scheduler_state_dir, label, "{:d}.pth".format(epoch))
         torch.save(self.lr_scheduler[label].state_dict(), saved_path)
         if self.logger:
             self.logger.info("Saved lr_shceduler['{}'] state into {}".format(label, saved_path))
@@ -328,7 +429,11 @@ class UTUIE(BaseModel):
             full_img = cv2.cvtColor(full_img, cv2.COLOR_RGB2BGR)
             cv2.imwrite(os.path.join(self.sample_dir, f'{iteration:06d}.png'), full_img)
     
-    def test(self, test_dl: DataLoader, epoch: int, test_name: str, load_prefix=None):
+    def test(self):
+        for epoch in self.epochs:
+            self.test_one_epoch(epoch, self.test_name, self.load_prefix)
+
+    def test_one_epoch(self, epoch: int, test_name: str, load_prefix=None):
         assert self.mode == 'test', f"The mode must be 'test', but got {self.mode}"
         
         weights_name = f"{load_prefix}_{epoch}" if load_prefix else f"{epoch}"
@@ -343,7 +448,7 @@ class UTUIE(BaseModel):
 
         t_elapse_list = []
         idx = 1
-        for batch in tqdm(test_dl):
+        for batch in tqdm(self.test_dl):
             inp_imgs = batch['inp'].to(self.device)
             ref_imgs = batch['ref'].to(self.device) if 'ref' in batch else None
             img_names = batch['img_name']
@@ -400,3 +505,13 @@ class UTUIE(BaseModel):
             full_img = np.concatenate((inp_imgs, pred_imgs), axis=0)
 
         return full_img
+    
+    @staticmethod
+    def modify_args(parser, mode):
+        if mode == 'train':
+            parser.add_argument('--lambda_pixel', type=float, default=0.1)
+            parser.add_argument('--lambda_lab', type=float, default=0.001)
+            parser.add_argument('--lambda_lch', type=float, default=1)
+            parser.add_argument('--lambda_con', type=float, default=100)
+            parser.add_argument('--lambda_ssim', type=float, default=100)
+        return parser

@@ -3,8 +3,9 @@ from utils import Registry
 
 _models = Registry('model')
 
-def create_model(name, cfg):
-    model = _models.get(name)(cfg)
+def create_model(cfg):
+    assert 'model_name' in cfg, "model name is required"
+    model = _models.get(cfg['model_name'])(cfg)
     return model
 
 from models import (

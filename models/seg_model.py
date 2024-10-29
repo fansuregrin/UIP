@@ -1,61 +1,98 @@
+import os
+import time
+import random
+import shutil
+import sys
+from typing import Dict
+import yaml
 import torch
 import torch.optim as optim
 import torch.nn as nn
 from torch import Tensor
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
-import os
-import numpy as np
-import time
+from torch.utils.tensorboard import SummaryWriter
 import cv2
-import shutil
+import numpy as np
 from tqdm import tqdm
 from torchvision.utils import draw_segmentation_masks
 from kornia.losses import DiceLoss
 from kornia.metrics import mean_iou
-from typing import Dict
 
 from .base_model import BaseModel
+from data import create_dataloader, create_dataset
+from networks import create_network
 from models import _models
+from utils import seed_everything
 
 
 @_models.register('seg')
 class SegModel(BaseModel):
     def __init__(self, cfg: Dict):
         super().__init__(cfg)
-        self.classes = cfg['classes']
+    
+    def setup(self):
+        self.name = self.cfg['name']
+        self.model_name = self.cfg['model_name']
+        self.mode = self.cfg['mode']
+        self.device = torch.device(self.cfg.get('device', 'cpu'))
+        self._set_network()
+        self._set_data()
+        
+        self.checkpoint_dir = os.path.join(
+            self.cfg['ckpt_dir'], self.model_name, self.net_name, self.name)
+        self._set_logger()
+        self.network_state_dir = os.path.join(self.checkpoint_dir, 'network')
+        os.makedirs(self.network_state_dir, exist_ok=True)
+        
         if self.mode == 'train':
-            os.makedirs(os.path.join(self.checkpoint_dir, 'network'), exist_ok=True)
-            # Set optimizers
-            self._set_optimizer()
-            os.makedirs(os.path.join(self.checkpoint_dir, 'optimizer'), exist_ok=True)
-            # Set lr_scheduler
-            self._set_lr_scheduler()
-            os.makedirs(os.path.join(self.checkpoint_dir, 'lr_scheduler'), exist_ok=True)
+            self.seed = self.cfg.get('seed', random.randint(0, 100000))
+            self.sample_dir = os.path.join(self.checkpoint_dir, 'samples')
+            os.makedirs(self.sample_dir, exist_ok=True)
+            self.start_epoch = self.cfg['start_epoch']
+            self.start_iteration = self.cfg['start_iteration']
+            self.num_epochs = self.cfg['num_epochs']
+            self.val_interval = self.cfg['val_interval']
+            self.ckpt_interval = self.cfg['ckpt_interval']
             # Set Loss function
             self._set_loss_fn()
+            # Set optimizers
+            self._set_optimizer()
+            self.optimizer_state_dir = os.path.join(self.checkpoint_dir, 'optimizer')
+            os.makedirs(self.optimizer_state_dir, exist_ok=True)
+            # Set lr_scheduler
+            self._set_lr_scheduler()
+            self.lr_scheduler_state_dir = os.path.join(self.checkpoint_dir, 'lr_scheduler')
+            os.makedirs(self.lr_scheduler_state_dir, exist_ok=True)
             self.train_loss = {}
             self.val_loss = {}
             self.train_metrics = {}
             self.val_metrics = {}
+            self.tensorboard_log_dir = os.path.join(self.checkpoint_dir, 'tb')
+            os.makedirs(self.tensorboard_log_dir, exist_ok=True)
+            self.tb_writer = SummaryWriter(log_dir=self.tensorboard_log_dir)
         elif self.mode == 'test':
-            self.checkpoint_dir = cfg['checkpoint_dir']
-            self.result_dir = cfg['result_dir']
+            self.result_dir = os.path.join(
+                self.cfg['result_dir'], self.model_name, self.net_name, self.name)
+            self.epochs = self.cfg['epochs']
+            self.test_name = self.cfg['test_name']
+            self.load_prefix = self.cfg['load_prefix']
 
     def _set_optimizer(self):
         params = self.network.parameters()
         optimizer = self.cfg['optimizer']
-        if optimizer['name'] == 'adam':
+        if optimizer == 'adam':
             self.optimizer = torch.optim.Adam(
-                params, lr=optimizer['lr'], weight_decay=optimizer['weight_decay'])
-        elif optimizer['name'] == 'sgd':
+                params, lr=self.cfg['lr'], weight_decay=self.cfg['weight_decay'])
+        elif optimizer == 'sgd':
             self.optimizer = torch.optim.SGD(
-                params, lr=optimizer['lr'], weight_decay=optimizer['weight_decay'])
+                params, lr=self.cfg['lr'], weight_decay=self.cfg['weight_decay'])
         else:
-            assert f"<{optimizer['name']}> is supported!"
+            assert f"<{optimizer}> is supported!"
 
     def _set_lr_scheduler(self):
-        lr_scheduler = self.cfg['lr_scheduler']
+        with open(self.cfg['lr_scheduler_cfg']) as f:
+            lr_scheduler = yaml.load(f, yaml.FullLoader)
         if lr_scheduler['name'] == 'none':
             self.lr_scheduler = None
         elif lr_scheduler['name'] == 'step_lr':
@@ -70,8 +107,58 @@ class SegModel(BaseModel):
         self.lambda_ce = self.cfg['lambda_ce']
         self.lambda_dice = self.cfg['lambda_dice']
 
+    def _set_data(self):
+        self.train_dl = None
+        self.val_dl = None
+        self.test_dl = None
+        with open(self.cfg['ds_cfg']) as f:
+            ds_cfg = yaml.load(f, yaml.FullLoader)
+        dl_cfg = {
+            'batch_size': self.cfg.get('batch_size', 1),
+            'shuffle': self.cfg.get('shuffle', True),
+            'num_workers': self.cfg.get('num_workers', 0),
+            'drop_last': self.cfg.get('drop_last', False)
+        }
+        self.classes = ds_cfg['classes']
+        if self.mode == 'train':
+            train_ds = create_dataset(ds_cfg['train'])
+            val_ds = create_dataset(ds_cfg['val'])
+            self.train_dl = create_dataloader(train_ds, dl_cfg)
+            self.val_dl = create_dataloader(val_ds, dl_cfg)
+        elif self.mode == 'test':
+            test_ds = create_dataset(ds_cfg['test'])
+            dl_cfg['shuffle'] = False
+            self.test_dl = create_dataloader(test_ds, dl_cfg)
+        else:
+            assert False,'invalid mode'
+
+    def _set_logger(self):
+        from loguru import logger
+        from utils import LOGURU_FORMAT
+        logger.remove(0)
+        if not self.cfg.get('quite', False):
+            logger.add(sys.stdout, format=LOGURU_FORMAT)
+        if self.mode == 'train':
+            self.log_dir = os.path.join(self.checkpoint_dir, 'logs/train')
+        elif self.mode == 'test':
+            self.log_dir = os.path.join(self.checkpoint_dir, 'logs/test')
+        os.makedirs(self.log_dir, exist_ok=True)
+        logger.add(os.path.join(self.log_dir, "{time}.log"), format=LOGURU_FORMAT)
+        self.logger = logger
+
+    def _set_network(self):
+        with open(self.cfg.get('net_cfg')) as f:
+            self.net_cfg = yaml.load(f, yaml.FullLoader)
+        self.net_name = self.net_cfg['name']
+        self.network = create_network(self.net_cfg)
+        if isinstance(self.network, dict):
+            for label in self.network:
+                self.network[label].to(self.device)
+        else:
+            self.network.to(self.device)
+
     def load_network_state(self, state_name: str):
-        state_path = os.path.join(self.checkpoint_dir, 'network', state_name)
+        state_path = os.path.join(self.network_state_dir, state_name)
         self.network.load_state_dict(torch.load(state_path))
         if self.logger:
             self.logger.info('Loaded network weights from {}.'.format(
@@ -79,7 +166,7 @@ class SegModel(BaseModel):
             ))
 
     def load_optimizer_state(self, state_name: str):
-        state_path = os.path.join(self.checkpoint_dir, 'optimizer', state_name)
+        state_path = os.path.join(self.optimizer_state_dir, state_name)
         self.optimizer.load_state_dict(torch.load(state_path))
         if self.logger:
             self.logger.info('Loaded optimizer state from {}.'.format(
@@ -87,15 +174,29 @@ class SegModel(BaseModel):
             ))
 
     def load_lr_scheduler_state(self, state_name: str):
-        state_path = os.path.join(self.checkpoint_dir, 'lr_scheduler', state_name)
+        state_path = os.path.join(self.lr_scheduler_state_dir, state_name)
         self.lr_scheduler.load_state_dict(torch.load(state_path))
         if self.logger:
             self.logger.info('Loaded lr_scheduler state from {}.'.format(
                 state_path
             ))
 
-    def train(self, train_dl: DataLoader, val_dl: DataLoader):
+    def train(self):
         assert self.mode == 'train', f"The mode must be 'train', but got {self.mode}"
+        seed_everything(self.seed)
+
+        if not self.logger is None:
+            self.logger.info(f"Starting Training Process...")
+            self.logger.info(f"model_name: {self.model_name}")
+            self.logger.info(f"mode: {self.mode}")
+            self.logger.info(f"device: {self.device}")
+            self.logger.info(f"checkpoint_dir: {self.checkpoint_dir}")
+            self.logger.info(f"net_cfg: {self.cfg['net_cfg']}")
+            for k, v in self.net_cfg.items():
+                self.logger.info(f"  {k}: {v}")
+            self.logger.info(f"lambda_ce: {self.lambda_ce}")
+            self.logger.info(f"lambda_dice: {self.lambda_dice}")
+
         if self.start_epoch > 0:
             load_prefix = self.cfg.get('load_prefix', None)
             if load_prefix:
@@ -110,12 +211,12 @@ class SegModel(BaseModel):
                 self.load_lr_scheduler_state(state_name)
         iteration_index = self.start_iteration
         for epoch in range(self.start_epoch, self.start_epoch + self.num_epochs):
-            for i, batch in enumerate(train_dl):
+            for i, batch in enumerate(self.train_dl):
                 # train one batch
                 self.train_one_batch(batch)
                 # validation
-                if (iteration_index % self.val_interval == 0) or (i == len(train_dl)-1):
-                    val_batch = next(iter(val_dl))
+                if (iteration_index % self.val_interval == 0) or (i == len(self.train_dl)-1):
+                    val_batch = next(iter(self.val_dl))
                     self.validate_one_batch(val_batch, iteration_index)
                     self.write_tensorboard(iteration_index)
             
@@ -123,7 +224,7 @@ class SegModel(BaseModel):
                         self.logger.info(
                             "[iteration: {:d}, lr: {:f}] [Epoch {:d}/{:d}, batch {:d}/{:d}] [train_loss: {:.3f}, val_loss: {:.3f}]".format(
                             iteration_index, self.optimizer.param_groups[0]['lr'],
-                            epoch, self.start_epoch + self.num_epochs-1, i, len(train_dl)-1,
+                            epoch, self.start_epoch + self.num_epochs-1, i, len(self.train_dl)-1,
                             self.train_loss['ce'].item(), self.val_loss['ce'].item()
                         ))
                 iteration_index += 1
@@ -172,9 +273,9 @@ class SegModel(BaseModel):
         if not save_prefix:
             save_prefix = load_prefix
         if save_prefix:
-            saved_path = os.path.join(self.checkpoint_dir, 'network', "{}_{:d}.pth".format(save_prefix, epoch))
+            saved_path = os.path.join(self.network_state_dir, "{}_{:d}.pth".format(save_prefix, epoch))
         else:
-            saved_path = os.path.join(self.checkpoint_dir, 'network', "{:d}.pth".format(epoch))
+            saved_path = os.path.join(self.network_state_dir, "{:d}.pth".format(epoch))
         torch.save(self.network.state_dict(), saved_path)
         if self.logger:
             self.logger.info("Saved network weights into {}".format(saved_path))
@@ -185,9 +286,9 @@ class SegModel(BaseModel):
         if not save_prefix:
             save_prefix = load_prefix
         if save_prefix:
-            saved_path = os.path.join(self.checkpoint_dir, 'optimizer', "{}_{:d}.pth".format(save_prefix, epoch))
+            saved_path = os.path.join(self.optimizer_state_dir, "{}_{:d}.pth".format(save_prefix, epoch))
         else:
-            saved_path = os.path.join(self.checkpoint_dir, 'optimizer', "{:d}.pth".format(epoch))
+            saved_path = os.path.join(self.optimizer_state_dir, "{:d}.pth".format(epoch))
         torch.save(self.optimizer.state_dict(), saved_path)
         if self.logger:
             self.logger.info("Saved optimizer state into {}".format(saved_path))
@@ -200,9 +301,9 @@ class SegModel(BaseModel):
         if not save_prefix:
             save_prefix = load_prefix
         if save_prefix:
-            saved_path = os.path.join(self.checkpoint_dir, 'lr_scheduler', "{}_{:d}.pth".format(save_prefix, epoch))
+            saved_path = os.path.join(self.lr_scheduler_state_dir, "{}_{:d}.pth".format(save_prefix, epoch))
         else:
-            saved_path = os.path.join(self.checkpoint_dir, 'lr_scheduler', "{:d}.pth".format(epoch))
+            saved_path = os.path.join(self.lr_scheduler_state_dir, "{:d}.pth".format(epoch))
         torch.save(self.lr_scheduler.state_dict(), saved_path)
         if self.logger:
             self.logger.info("Saved lr_shceduler state into {}".format(saved_path))
@@ -234,7 +335,11 @@ class SegModel(BaseModel):
             full_img = cv2.cvtColor(full_img, cv2.COLOR_RGB2BGR)
             cv2.imwrite(os.path.join(self.sample_dir, f'{iteration:06d}.png'), full_img)
     
-    def test(self, test_dl: DataLoader, epoch: int, test_name: str, load_prefix=None):
+    def test(self):
+        for epoch in self.epochs:
+            self.test_one_epoch(epoch, self.test_name, self.load_prefix)
+
+    def test_one_epoch(self, epoch: int, test_name: str, load_prefix=None):
         assert self.mode == 'test', f"The mode must be 'test', but got {self.mode}"
         
         weights_name = f"{load_prefix}_{epoch}" if load_prefix else f"{epoch}"
@@ -248,7 +353,7 @@ class SegModel(BaseModel):
         t_elapse_list = []
         mIoU_list = []
         idx = 1
-        for batch in tqdm(test_dl):
+        for batch in tqdm(self.test_dl):
             inp_imgs = batch['img'].to(self.device)
             ref_masks = batch['mask'].to(self.device) if 'mask' in batch else None
             img_names = batch['img_name']
@@ -323,3 +428,11 @@ class SegModel(BaseModel):
             imgs_with_pred_mask = np.concatenate(imgs_with_pred_mask, axis=1)
             full_img = img_with_pred_mask
         return full_img
+    
+    @staticmethod
+    def modify_args(parser, mode):
+        if mode == 'train':
+            parser.add_argument('--weight_decay', type=float, default=0.0)
+            parser.add_argument('--lambda_ce', type=float, default=1.0)
+            parser.add_argument('--lambda_dice', type=float, default=1.0)
+        return parser
