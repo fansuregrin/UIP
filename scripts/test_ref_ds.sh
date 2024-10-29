@@ -18,7 +18,7 @@ ds_dict=([LSUI]="configs/dataset/lsui.yaml"
 if [ $# -lt 5 ]
 then
     echo -e "${RED}PLEASE PASS IN THE FOLLOWING ARGUMENTS IN ORDER!${ENDSTYLE}"
-    echo -e "1) model_v"
+    echo -e "1) model_name"
     echo -e "2) net_cfg"
     echo -e "3) name"
     echo -e "4) epochs: multiple epochs must be separated by commas"
@@ -26,7 +26,7 @@ then
     echo -e "for example: \"${BOLD_GREEN}bash ${0} ie configs/network/ra_9blocks_2down.yaml LSUI_01 299 weights${ENDSTYLE}\""
     exit -1
 fi
-model_v=${1}
+model_name=${1}
 net_cfg=${2}
 name=${3}
 raw_epochs=${4}
@@ -36,11 +36,12 @@ epochs=$(echo ${raw_epochs} | tr ',' ' ')
 
 for ds_name in ${!ds_dict[@]};
 do
-    python ./test_${model_v}.py \
+    python ./test.py \
+    --model_name ${model_name} \
     --ds_cfg ${ds_dict[${ds_name}]} \
     --net_cfg ${net_cfg} \
     --name ${name} \
     --test_name ${ds_name} \
-    --epoch ${epochs} \
+    --epochs ${epochs} \
     --load_prefix ${load_prefix}
 done
