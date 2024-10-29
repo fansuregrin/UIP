@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import torch
 from PIL import Image
 from torch.utils.data import Dataset
 
@@ -9,7 +10,10 @@ from data import DatasetCreator, dataset_creators
 
 
 class PairedImgDataset(Dataset):
-    """
+    """Paired Image Dataset.
+    
+        - folderA: `root_dir/input_idr`
+        - folderB: `root_dir/ref_dir`
     """
     def __init__(self, root_dir, inp_dir, ref_dir, transforms_):
         self.root_dir = root_dir
@@ -41,8 +45,14 @@ class PairedImgDataset(Dataset):
         pil_img_ref = Image.open(self.ref_img_fps[index % self.length])
         img_inp = np.asarray(pil_img_inp, dtype=np.float32) / 255. 
         img_ref = np.asarray(pil_img_ref, dtype=np.float32) / 255.
-        res = self.transforms(image=img_inp, ref=img_ref)
         img_name = os.path.basename(inp_img_fp)
+        if not self.transforms is None:
+            res = self.transforms(image=img_inp, ref=img_ref)
+        else:
+            res = {
+                'image': torch.as_tensor(img_inp, dtype=torch.float32).permute(2,0,1),
+                'ref': torch.as_tensor(img_ref, dtype=torch.float32).permute(2,0,1)
+            }
         return {'inp': res['image'], 'ref': res['ref'], 'img_name': img_name}
 
     def __len__(self):
