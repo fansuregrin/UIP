@@ -216,7 +216,7 @@ class ImgEnhanceModel(BaseModel):
             for k, v in self.net_cfg.items():
                 self.logger.info(f"  {k}: {v}")
             self.logger.info("lr_scheduler config details:")
-            for k, v in self.lr_scheduler_cfg:
+            for k, v in self.lr_scheduler_cfg.items():
                 self.logger.info(f"  {k}: {v}")
 
         if self.start_epoch > 0:
