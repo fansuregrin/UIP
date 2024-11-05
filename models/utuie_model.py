@@ -125,20 +125,21 @@ class UTUIE(BaseModel):
 
     def _set_lr_scheduler(self):
         with open(self.cfg['lr_scheduler_cfg']) as f:
-            lr_scheduler_cfg = yaml.load(f, yaml.FullLoader)
+            _cfg = yaml.load(f, yaml.FullLoader)
         self.lr_scheduler = {}
-        if lr_scheduler_cfg['name'] == 'none':
+        if _cfg['name'] == 'none':
             self.lr_scheduler['G'] = None
             self.lr_scheduler['D'] = None
-        elif lr_scheduler_cfg['name'] == 'step_lr':
+        elif _cfg['name'] == 'step_lr':
             self.lr_scheduler['G'] = optim.lr_scheduler.StepLR(
-                self.optimizer['G'], lr_scheduler_cfg['step_size'],
-                lr_scheduler_cfg['gamma'])
+                self.optimizer['G'], _cfg['step_size'],
+                _cfg['gamma'])
             self.lr_scheduler['D'] = optim.lr_scheduler.StepLR(
-                self.optimizer['D'], lr_scheduler_cfg['step_size'],
-                lr_scheduler_cfg['gamma'])
+                self.optimizer['D'], _cfg['step_size'],
+                _cfg['gamma'])
         else:
-            assert f"<{lr_scheduler_cfg['name']}> is supported!"
+            assert f"<{_cfg['name']}> is supported!"
+        self.lr_scheduler_cfg = _cfg
 
     def _set_network(self):
         with open(self.cfg.get('net_cfg')) as f:
@@ -225,12 +226,13 @@ class UTUIE(BaseModel):
 
         if not self.logger is None:
             self.logger.info(f"Starting Training Process...")
-            self.logger.info(f"model_name: {self.model_name}")
-            self.logger.info(f"mode: {self.mode}")
-            self.logger.info(f"device: {self.device}")
-            self.logger.info(f"checkpoint_dir: {self.checkpoint_dir}")
-            self.logger.info(f"net_cfg: {self.cfg['net_cfg']}")
+            for k, v in self.cfg.items():
+                self.logger.info(f"{k}: {v}")
+            self.logger.info("network config details:")
             for k, v in self.net_cfg.items():
+                self.logger.info(f"  {k}: {v}")
+            self.logger.info("lr_scheduler config details:")
+            for k, v in self.lr_scheduler_cfg.items():
                 self.logger.info(f"  {k}: {v}")
 
         if self.start_epoch > 0:

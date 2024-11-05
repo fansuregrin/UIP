@@ -11,6 +11,7 @@ from torchvision.utils import save_image
 from losses import SemanticContentLoss as PerceptrualLoss
 from models.img_enhance_model import ImgEnhanceModel
 from models import _models
+from utils import seed_everything
 
 
 @_models.register('waternet')
@@ -64,7 +65,16 @@ class WaterNetModel(ImgEnhanceModel):
         
         seed_everything(self.seed)
 
-
+        if not self.logger is None:
+            self.logger.info(f"Starting Training Process...")
+            for k, v in self.cfg.items():
+                self.logger.info(f"{k}: {v}")
+            self.logger.info("network config details:")
+            for k, v in self.net_cfg.items():
+                self.logger.info(f"  {k}: {v}")
+            self.logger.info("lr_scheduler config details:")
+            for k, v in self.lr_scheduler_cfg.items():
+                self.logger.info(f"  {k}: {v}")
         
         if self.start_epoch > 0:
             load_prefix = self.cfg.get('load_prefix', None)
