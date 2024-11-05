@@ -4,20 +4,22 @@ import random
 import shutil
 import sys
 from typing import Dict
+
 import yaml
+import pandas as pd
 import torch
 import torch.optim as optim
 import torch.nn as nn
 from torch import Tensor
 import torch.nn.functional as F
-from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 import cv2
 import numpy as np
 from tqdm import tqdm
 from torchvision.utils import draw_segmentation_masks
 from kornia.losses import DiceLoss
-from kornia.metrics import mean_iou
+# from kornia.metrics import mean_iou
+from torchmetrics.functional.segmentation import mean_iou
 
 from .base_model import BaseModel
 from data import create_dataloader, create_dataset
@@ -114,9 +116,10 @@ class SegModel(BaseModel):
         self.test_dl = None
         with open(self.cfg['ds_cfg']) as f:
             ds_cfg = yaml.load(f, yaml.FullLoader)
+        self.cfg['shuffle'] = True if self.mode == 'train' else False
         dl_cfg = {
             'batch_size': self.cfg.get('batch_size', 1),
-            'shuffle': self.cfg.get('shuffle', True),
+            'shuffle': self.cfg['shuffle'],
             'num_workers': self.cfg.get('num_workers', 0),
             'drop_last': self.cfg.get('drop_last', False)
         }
@@ -128,7 +131,6 @@ class SegModel(BaseModel):
             self.val_dl = create_dataloader(val_ds, dl_cfg)
         elif self.mode == 'test':
             test_ds = create_dataset(ds_cfg['test'])
-            dl_cfg['shuffle'] = False
             self.test_dl = create_dataloader(test_ds, dl_cfg)
         else:
             assert False,'invalid mode'
@@ -162,7 +164,7 @@ class SegModel(BaseModel):
         state_path = os.path.join(self.network_state_dir, state_name)
         self.network.load_state_dict(torch.load(state_path))
         if self.logger:
-            self.logger.info('Loaded network weights from {}.'.format(
+            self.logger.info('Loaded network weights from [{}]'.format(
                 state_path
             ))
 
@@ -209,6 +211,7 @@ class SegModel(BaseModel):
                 self.load_network_state(state_name)
                 self.load_optimizer_state(state_name)
                 self.load_lr_scheduler_state(state_name)
+        
         iteration_index = self.start_iteration
         for epoch in range(self.start_epoch, self.start_epoch + self.num_epochs):
             for i, batch in enumerate(self.train_dl):
@@ -319,10 +322,12 @@ class SegModel(BaseModel):
         
     def _calculate_metrics(self, ref_masks, pred_masks, train=True):
         metrics = self.train_metrics if train else self.val_metrics
-        metrics['mIoU'] = mean_iou(
-            F.softmax(pred_masks, dim=1).argmax(1),
-            ref_masks,
-            len(self.classes)).mean(1).mean(0)
+        # metrics['mIoU'] = mean_iou(
+        #     F.softmax(pred_masks, dim=1).argmax(1),
+        #     ref_masks,
+        #     len(self.classes)).mean(1).mean(0)
+        metrics['mIoU'] = mean_iou(pred_masks.argmax(1), ref_masks, 
+                                   len(self.classes), input_format='index').mean()
 
     def validate_one_batch(self, input_: Dict, iteration):
         inp_imgs = input_['img'].to(self.device)
@@ -336,6 +341,14 @@ class SegModel(BaseModel):
             cv2.imwrite(os.path.join(self.sample_dir, f'{iteration:06d}.png'), full_img)
     
     def test(self):
+        if not self.logger is None:
+            self.logger.info(f"Starting Training Process...")
+            for k, v in self.cfg.items():
+                self.logger.info(f"{k}: {v}")
+            self.logger.info("network config details:")
+            for k, v in self.net_cfg.items():
+                self.logger.info(f"  {k}: {v}")
+        
         for epoch in self.epochs:
             self.test_one_epoch(epoch, self.test_name, self.load_prefix)
 
@@ -350,44 +363,51 @@ class SegModel(BaseModel):
         os.makedirs(result_dir)
         os.makedirs(os.path.join(result_dir, 'paired'))
 
-        t_elapse_list = []
-        mIoU_list = []
-        idx = 1
+        columns = ['img_name', 'time', 'mIoU']
+        columns += [f"mIoU_{cls['symbol']}" for cls in self.classes]
+        record = pd.DataFrame(columns=columns)
+
+        batch_idx = 1
         for batch in tqdm(self.test_dl):
             inp_imgs = batch['img'].to(self.device)
             ref_masks = batch['mask'].to(self.device) if 'mask' in batch else None
             img_names = batch['img_name']
-            num = len(inp_imgs)
+            batch_size = len(inp_imgs)
+            
             with torch.no_grad():
                 self.network.eval()
                 t_start = time.time()
                 pred_masks = self.network(inp_imgs)
-                
-                # average inference time consumed by one batch
-                t_elapse_avg = (time.time() - t_start) / num
-                t_elapse_list.append(t_elapse_avg)
+                # consumed time
+                t_elapse = (time.time() - t_start)
+            
+            # global mIoU & mIoU per class
+            if not ref_masks is None:
+                mIoU = mean_iou(pred_masks.softmax(1).argmax(1),
+                    ref_masks, len(self.classes), input_format='index')
+                mIoU_per_class = mean_iou(pred_masks.softmax(1).argmax(1), ref_masks,
+                    len(self.classes), per_class=True, input_format='index')
+            
+            for i in range(batch_size):
+                img_name = img_names[i]
+                row = {'img_name': img_name, 'time': t_elapse/batch_size}
+                row['mIoU'] = mIoU[i].cpu().item()
+                for cls in self.classes:
+                    row[f"mIoU_{cls['symbol']}"] = mIoU_per_class[i][cls['id']].cpu().item()
+                record.loc[len(record)] = row
 
-                # calculate mIoU
-                mIoU = mean_iou(F.softmax(pred_masks, dim=1).argmax(1),
-                    ref_masks, len(self.classes)).mean(1).mean(0)
-                mIoU_list.append(mIoU.cpu().item())
+            # visualized results
+            full_img = self._gen_comparison_img(inp_imgs, pred_masks, ref_masks)
+            full_img = cv2.cvtColor(full_img, cv2.COLOR_RGB2BGR)
+            cv2.imwrite(os.path.join(result_dir, 'paired', f'{batch_idx:06d}.png'), full_img)
+            batch_idx += 1
 
-                # record visual results and metrics values
-                full_img = self._gen_comparison_img(inp_imgs, pred_masks, ref_masks)
-                full_img = cv2.cvtColor(full_img, cv2.COLOR_RGB2BGR)
-                cv2.imwrite(os.path.join(result_dir, 'paired', f'{idx:06d}.png'), full_img)
-                with open(os.path.join(result_dir, 'paired', f"{idx:06d}.txt"), 'w') as f:
-                    f.write('\n'.join(img_names))
-            idx += 1
+        record.loc[len(record)] = record.select_dtypes(include='number').mean()
+        record.loc[len(record)-1, 'img_name'] = 'average'
+        record.to_csv(os.path.join(result_dir, 'record.csv'), index=False)
 
-        frame_rate = 1 / (sum(t_elapse_list) / len(t_elapse_list))
-        mIoU = sum(mIoU_list) / len(mIoU_list)
         if self.logger:
-            self.logger.info(
-                '[epoch: {:d}] [framte_rate: {:.1f} fps, mIoU: {:.3f}]'.format(
-                    epoch, frame_rate, mIoU
-                )
-            )
+            self.logger.info(f'saved result into [{result_dir}]')
     
     def _gen_comparison_img(self, imgs: Tensor, pred_masks: Tensor, ref_masks = None):
         colors = ['#'+clz['color'] for clz in self.classes]
