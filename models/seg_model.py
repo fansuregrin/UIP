@@ -18,14 +18,15 @@ import numpy as np
 from tqdm import tqdm
 from torchvision.utils import draw_segmentation_masks
 from kornia.losses import DiceLoss
-# from kornia.metrics import mean_iou
 from torchmetrics.functional.segmentation import mean_iou
+
 
 from .base_model import BaseModel
 from data import create_dataloader, create_dataset
 from networks import create_network
 from models import _models
 from utils import seed_everything
+from metrics import StreamSegMetrics
 
 
 @_models.register('seg')
@@ -322,12 +323,12 @@ class SegModel(BaseModel):
         
     def _calculate_metrics(self, ref_masks, pred_masks, train=True):
         metrics = self.train_metrics if train else self.val_metrics
-        # metrics['mIoU'] = mean_iou(
-        #     F.softmax(pred_masks, dim=1).argmax(1),
-        #     ref_masks,
-        #     len(self.classes)).mean(1).mean(0)
-        metrics['mIoU'] = mean_iou(pred_masks.argmax(1), ref_masks, 
-                                   len(self.classes), input_format='index').mean()
+        _metrics = StreamSegMetrics(len(self.classes))
+        _metrics.reset()
+        _metrics.update(ref_masks.cpu().numpy(), pred_masks.softmax(1).argmax(1).cpu().numpy())
+        res = _metrics.get_results()
+        metrics['mIoU'] = res['Mean IoU']
+        metrics['acc'] = res['Overall Acc']
 
     def validate_one_batch(self, input_: Dict, iteration):
         inp_imgs = input_['img'].to(self.device)
@@ -367,6 +368,7 @@ class SegModel(BaseModel):
         columns += [f"mIoU_{cls['symbol']}" for cls in self.classes]
         record = pd.DataFrame(columns=columns)
 
+        stream_metrics = StreamSegMetrics(len(self.classes))
         batch_idx = 1
         for batch in tqdm(self.test_dl):
             inp_imgs = batch['img'].to(self.device)
@@ -381,7 +383,10 @@ class SegModel(BaseModel):
                 # consumed time
                 t_elapse = (time.time() - t_start)
             
-            # global mIoU & mIoU per class
+            if not ref_masks is None:
+                stream_metrics.update(ref_masks.cpu().numpy(),
+                    pred_masks.softmax(1).argmax(1).cpu().numpy())
+
             if not ref_masks is None:
                 mIoU = mean_iou(pred_masks.softmax(1).argmax(1),
                     ref_masks, len(self.classes), input_format='index')
@@ -406,7 +411,13 @@ class SegModel(BaseModel):
         record.loc[len(record)-1, 'img_name'] = 'average'
         record.to_csv(os.path.join(result_dir, 'record.csv'), index=False)
 
+        stream_metrics = stream_metrics.get_results()
+        with open(os.path.join(result_dir, 'stream_metrics.yaml'), 'w') as f:
+            yaml.dump(stream_metrics, f)
+
         if self.logger:
+            self.logger.info(f"overall accurary: {stream_metrics['Overall_Acc']:.6f}")
+            self.logger.info(f"mean IoU: {stream_metrics['Mean_IoU']:.6f}")
             self.logger.info(f'saved result into [{result_dir}]')
     
     def _gen_comparison_img(self, imgs: Tensor, pred_masks: Tensor, ref_masks = None):
