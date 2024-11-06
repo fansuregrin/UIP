@@ -327,8 +327,8 @@ class SegModel(BaseModel):
         _metrics.reset()
         _metrics.update(ref_masks.cpu().numpy(), pred_masks.softmax(1).argmax(1).cpu().numpy())
         res = _metrics.get_results()
-        metrics['mIoU'] = res['Mean IoU']
-        metrics['acc'] = res['Overall Acc']
+        metrics['mIoU'] = res['Mean_IoU']
+        metrics['acc'] = res['Overall_Acc']
 
     def validate_one_batch(self, input_: Dict, iteration):
         inp_imgs = input_['img'].to(self.device)
