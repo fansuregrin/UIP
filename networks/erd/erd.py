@@ -1,7 +1,5 @@
 import torch.nn as nn
-from einops import rearrange
 from typing import Union
-
 from networks.swin_transformer.swin_transformer import SwinTransformerBlock
 from .conv_att import ChannelAttention, SpatialAttention
 from .resnet import ResnetBlock
@@ -9,9 +7,17 @@ from .resnet import ResnetBlock
 
 class AttDownBlock(nn.Module):
     """Attention Down-sampling Block."""
-    def __init__(self, in_channels, out_channels, swinT_resolution,
-              n_swinT = 1, norm_layer=None, use_ca=True, use_sa_swinT=True,
-              use_dropout=False, dropout_rate=0.5, fused_window_process=False):
+    def __init__(self,
+                 in_channels,
+                 out_channels,
+                 swinT_resolution,
+                 n_swinT = 1,
+                 norm_layer=None,
+                 use_ca=True,
+                 use_sa_swinT=True,
+                 use_dropout=False,
+                 dropout_rate=0.5,
+                 fused_window_process=False):
         """Initialize Attention Down-sampling Block.
 
         Args:
@@ -55,9 +61,12 @@ class AttDownBlock(nn.Module):
             out = self.ca(out) * out
         if self.use_sa_swinT:
             out = self.sa(out) * out
-            out = rearrange(out, 'n c h w -> n (h w) c')
+            # alternative for `out = rearrange(out, 'n c h w -> n (h w) c')`
+            out = out.permute(0, 2, 3, 1).reshape(out.size(0), -1, out.size(1))
             out = self.swinTs(out)
-            out = rearrange(out, 'n (h w) c -> n c h w', h=self.swinT_resolution[0])
+            # alternative ofr `out = rearrange(out, 'n (h w) c -> n c h w', h=self.swinT_resolution[0])`
+            out = out.reshape(out.size(0), self.swinT_resolution[0], 
+                              self.swinT_resolution[1], -1).permute(0, 3, 1, 2)
         return out
 
 
