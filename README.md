@@ -1,4 +1,4 @@
-# My Research Activities of Underwater Image Processing (UIP)
+# Underwater Image Processing (UIP)
 
 ## Underwater Image Enhancement (UIE)
 
@@ -64,8 +64,19 @@ Loss Functions:
     ```
 
 ### Networks
-
-#### 1.RANet
-#### 2.RANet2
-#### 3.RANet3
-#### 4.RANet4
+<table>
+<tr>
+    <td><a href="./networks/unet/">UNet</a></td>
+    <td><a href="./networks/fcn/">FCN</a></td>
+    <td><a href="./networks/ege_unet/">EGE_UNet</a></td>
+    <td><a href="./networks/ugan/">UGAN</a></td>
+    <td><a href="./networks/waternet/">WaterNet</a></td>
+</tr>
+<tr>
+    <td><a href="./networks/ra_net/">RA</a></td>
+    <td><a href="./networks/erd/">ERD</a></td>
+    <td><a href="./networks/vg_unet/">VGUNet</a></td>
+    <td><a href="./networks/mimo_swinT_unet/">MimoSwinTUNet</a></td>
+    <td><a href="./networks/aquatic_mamba/">Aquatic Mamba</a></td>
+</tr>
+</table>
