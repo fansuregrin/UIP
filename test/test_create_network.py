@@ -25,6 +25,10 @@ class TestCreateNetwork(unittest.TestCase):
         cfg_01 = os.path.join(ROOT_DIR, 'configs/network/erd_2down_15res.yaml')
         create_network(self._load_cfg(cfg_01))
 
+    def test_create_erd2(self):
+        cfg_01 = os.path.join(ROOT_DIR, 'configs/network/erd2/erd2_3down_8res.yaml')
+        create_network(self._load_cfg(cfg_01))
+
     def test_create_color_enhancer(self):
         cfg_01 = os.path.join(ROOT_DIR, 'configs/network/ce_01.yaml')
         create_network(self._load_cfg(cfg_01))
