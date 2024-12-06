@@ -1,3 +1,7 @@
+from typing import Iterable, Any
+from functools import reduce
+from operator import mul
+
 import numpy as np
 import torch
 from torch import nn
@@ -27,3 +31,7 @@ def get_norm_layer(name: str) -> nn.Module:
         assert False,'Unsupported Normalization Layer: "{name}"!'
     
     return layer
+
+
+def mul_elements(seq: Iterable[Any], init: Any = None) -> Any:
+    return reduce(mul, seq) if init is None else reduce(mul, seq, init)

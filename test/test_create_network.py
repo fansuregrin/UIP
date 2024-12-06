@@ -18,11 +18,11 @@ class TestCreateNetwork(unittest.TestCase):
 
     def test_create_aquatic_mamba(self):
         # full
-        cfg_01 = os.path.join(ROOT_DIR, 'configs/network/aq_mamba_01.yaml')
+        cfg_01 = os.path.join(ROOT_DIR, 'configs/network/aq_mamba/aq_mamba_01.yaml')
         create_network(self._load_cfg(cfg_01))
 
     def test_create_erd(self):
-        cfg_01 = os.path.join(ROOT_DIR, 'configs/network/erd_2down_15res.yaml')
+        cfg_01 = os.path.join(ROOT_DIR, 'configs/network/erd/erd_2down_15res.yaml')
         create_network(self._load_cfg(cfg_01))
 
     def test_create_erd2(self):
@@ -58,7 +58,7 @@ class TestCreateNetwork(unittest.TestCase):
         create_network(self._load_cfg(cfg_01))
 
     def test_create_vgunet(self):
-        cfg_01 = os.path.join(ROOT_DIR, 'configs/network/vgunet_01.yaml')
+        cfg_01 = os.path.join(ROOT_DIR, 'configs/network/vagunet/vgunet_01.yaml')
         create_network(self._load_cfg(cfg_01))
 
     def test_create_vm_unet(self):
@@ -66,7 +66,7 @@ class TestCreateNetwork(unittest.TestCase):
         create_network(self._load_cfg(cfg_01))
 
     def test_create_waternet(self):
-        cfg_01 = os.path.join(ROOT_DIR, 'configs/network/waternet_01.yaml')
+        cfg_01 = os.path.join(ROOT_DIR, 'configs/network/waternet/waternet_01.yaml')
         create_network(self._load_cfg(cfg_01))
 
     def test_create_mimounet(self):
@@ -74,11 +74,11 @@ class TestCreateNetwork(unittest.TestCase):
         create_network(self._load_cfg(cfg_01))
 
     def test_create_mimo_swinT_unet(self):
-        cfg_01 = os.path.join(ROOT_DIR, 'configs/network/mimo_1swinT_unet.yaml')
+        cfg_01 = os.path.join(ROOT_DIR, 'configs/network/mimo_swint_unet/mimo_1swinT_unet.yaml')
         create_network(self._load_cfg(cfg_01))
 
     def test_create_ra_net(self):
-        cfg_01 = os.path.join(ROOT_DIR, 'configs/network/ra_15blocks_2down.yaml')
+        cfg_01 = os.path.join(ROOT_DIR, 'configs/network/ra/ra_15blocks_2down.yaml')
         create_network(self._load_cfg(cfg_01))
 
     def test_create_vit_enhancer1(self):
@@ -86,7 +86,7 @@ class TestCreateNetwork(unittest.TestCase):
         create_network(self._load_cfg(cfg_01))
 
     def test_create_fcn(self):
-        cfg_01 = os.path.join(ROOT_DIR, 'configs/network/fcn_01.yaml')
+        cfg_01 = os.path.join(ROOT_DIR, 'configs/network/fcn/fcn_01.yaml')
         create_network(self._load_cfg(cfg_01))
 
     def test_create_deeplabv3(self):
@@ -101,6 +101,9 @@ class TestCreateNetwork(unittest.TestCase):
         cfg_01 = os.path.join(ROOT_DIR, 'configs/network/segnet_01.yaml')
         create_network(self._load_cfg(cfg_01))
 
+    def test_create_msu(self):
+        cfg_01 = os.path.join(ROOT_DIR, 'configs/network/msu/msu_8res_4swinT.yaml')
+        create_network(self._load_cfg(cfg_01))
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,0 +1,11 @@
+name: 'msu'
+in_ch: 3
+out_ch: 3
+base_ch: 32
+img_size: 256
+num_res: 8
+num_swinT: 4
+patch_sizes: [4, 2, 1]
+window_sizes: [8, 8, 8]
+num_heads: 8
+fused_window_process: true

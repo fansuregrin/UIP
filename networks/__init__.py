@@ -36,6 +36,7 @@ from networks import (
     mimo_swinT_unet,
     ra_net,
     vit_enhancer,
+    msu,
     fcn,
     deeplabv3,
     unet,
