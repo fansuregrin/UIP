@@ -1,6 +1,4 @@
 from typing import Iterable, Union, Tuple
-from functools import reduce
-from operator import mul
 
 import torch
 import torch.nn as nn
@@ -154,7 +152,7 @@ class MSU(nn.Module):
             ]
         )
 
-        self.AFFs = nn.ModuleList([
+        self.FHMs = nn.ModuleList([
             FHM(base_ch, base_ch*2, base_ch*4, base_ch*1),
             FHM(base_ch, base_ch*2, base_ch*4, base_ch*2)
         ])
@@ -203,7 +201,7 @@ class MSU(nn.Module):
             )
         ])
 
-        self.FAMs = nn.ModuleList([
+        self.FABs = nn.ModuleList([
             FAB(base_ch, base_ch * 2),
             FAB(base_ch * 2, base_ch * 4)
         ])
@@ -228,10 +226,10 @@ class MSU(nn.Module):
 
         res1 = self.Encoder[0](z_1)
 
-        z_2 = self.FAMs[0](res1, z_2)
+        z_2 = self.FABs[0](res1, z_2)
         res2 = self.Encoder[1](z_2)
 
-        z_3 = self.FAMs[1](res2, z_3)
+        z_3 = self.FABs[1](res2, z_3)
         res3 = self.Encoder[2](z_3)
 
         z_1to2 = F.interpolate(res1, scale_factor=0.5)
@@ -239,8 +237,8 @@ class MSU(nn.Module):
         z_3to2 = F.interpolate(res3, scale_factor=2)
         z_3to1 = F.interpolate(z_3to2, scale_factor=2)
 
-        f1 = self.AFFs[0](res1, z_2to1, z_3to1)
-        f2 = self.AFFs[1](z_1to2, res2, z_3to2)
+        f1 = self.FHMs[0](res1, z_2to1, z_3to1)
+        f2 = self.FHMs[1](z_1to2, res2, z_3to2)
 
         d3 = self.Decoder[2](res3)
         d3_out = self.OutConvs[2](d3)
