@@ -8,3 +8,5 @@ results/
 test_code.py
 figures/
 notebooks/
+test/*.ipynb
+zips/
