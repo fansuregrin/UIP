@@ -1,25 +1,24 @@
+import os
+import time
+import sys
+import random
+import shutil
+
 import torch
 import torch.optim as optim
 import torch.nn as nn
 import torch.nn.functional as F
-import os
+from torch.utils.tensorboard import SummaryWriter
+from torchvision.utils import save_image
 import numpy as np
-import time
-import sys
 import yaml
-import random
 from torch import Tensor
 from typing import Union, Dict
 from kornia.losses import SSIMLoss, PSNRLoss
 from kornia.metrics import psnr, ssim
-from torch.utils.tensorboard import SummaryWriter
-
-from torch.utils.data import DataLoader
-from torchvision.utils import save_image
 from tqdm import tqdm
-import torch
 import cv2
-import shutil
+
 
 from networks import create_network
 from data import create_dataset, create_dataloader
@@ -668,8 +667,18 @@ class ImgEnhanceModel7(ImgEnhanceModel):
 
         return full_img
     
-    def test(self, test_dl: DataLoader, epoch: int, test_name: str, load_prefix=None):
+    def test_one_epoch(self, epoch: int, test_name: str, load_prefix=None):
         assert self.mode == 'test', f"The mode must be 'test', but got {self.mode}"
+
+        if not self.logger is None:
+            self.logger.info(f"Starting Test Process...")
+            self.logger.info(f"model_name: {self.model_name}")
+            self.logger.info(f"mode: {self.mode}")
+            self.logger.info(f"device: {self.device}")
+            self.logger.info(f"checkpoint_dir: {self.checkpoint_dir}")
+            self.logger.info(f"net_cfg: {self.cfg['net_cfg']}")
+            for k, v in self.net_cfg.items():
+                self.logger.info(f"  {k}: {v}")
         
         weights_name = f"{load_prefix}_{epoch}" if load_prefix else f"{epoch}"
         self.load_network_state(f"{weights_name}.pth")
@@ -683,7 +692,7 @@ class ImgEnhanceModel7(ImgEnhanceModel):
 
         t_elapse_list = []
         idx = 1
-        for batch in tqdm(test_dl):
+        for batch in tqdm(self.test_dl):
             inp_imgs = batch['inp'].to(self.device)
             ref_imgs = batch['ref'].to(self.device) if 'ref' in batch else None
             img_names = batch['img_name']
