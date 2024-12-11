@@ -1,8 +1,10 @@
 import unittest
 import os
 import sys
-import yaml
 from typing import Dict, Any
+
+import yaml
+import torch
 
 ROOT_DIR = os.path.dirname(os.path.dirname(__file__))
 sys.path.append(ROOT_DIR)
@@ -104,6 +106,42 @@ class TestCreateNetwork(unittest.TestCase):
     def test_create_msu(self):
         cfg_01 = os.path.join(ROOT_DIR, 'configs/network/msu/msu_8res_4swinT.yaml')
         create_network(self._load_cfg(cfg_01))
+
+
+class TestMSU(unittest.TestCase):
+    @staticmethod
+    def _create_and_run(cfg_fp: str):
+        with open(cfg_fp, 'r') as f:
+            cfg = yaml.load(f, yaml.Loader)
+        net = create_network(cfg).to('cuda')
+        x = torch.randn((4, 3, 256, 256)).to('cuda')
+        y = net(x)
+        return y
+
+    def test_full_model(self):
+        y = self._create_and_run(
+            os.path.join(ROOT_DIR, 'configs/network/msu/msu_8res_4swinT.yaml'))
+        assert y[1].shape == (4, 3, 256, 256)
+        assert y[0.5].shape == (4, 3, 128, 128)
+        assert y[0.25].shape == (4, 3, 64, 64)
+
+    def test_wo_fhm(self):
+        y = self._create_and_run(
+            os.path.join(ROOT_DIR, 'configs/network/msu/msu_8res_4swinT_02.yaml'))
+        assert y[1].shape == (4, 3, 256, 256)
+        assert y[0.5].shape == (4, 3, 128, 128)
+        assert y[0.25].shape == (4, 3, 64, 64)
+
+    def test_one_scale(self):
+        y = self._create_and_run(
+            os.path.join(ROOT_DIR, 'configs/network/msu/msu_8res_4swinT_03.yaml'))
+        assert y[1].shape == (4, 3, 256, 256)
+    
+    def test_two_scale(self):
+        y = self._create_and_run(
+            os.path.join(ROOT_DIR, 'configs/network/msu/msu_8res_4swinT_04.yaml'))
+        assert y[1].shape == (4, 3, 256, 256)
+        assert y[0.5].shape == (4, 3, 128, 128)
 
 if __name__ == '__main__':
     unittest.main()

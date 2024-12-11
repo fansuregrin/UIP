@@ -1,4 +1,4 @@
-# full model
+# w/o FHM
 name: 'msu'
 in_ch: 3
 out_ch: 3
@@ -11,4 +11,4 @@ window_sizes: [8, 8, 8]
 num_heads: 8
 fused_window_process: true
 num_scales: 3
-use_fhm: true
+use_fhm: false

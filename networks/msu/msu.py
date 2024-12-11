@@ -122,6 +122,12 @@ class MSU(nn.Module):
 
         self.base_channel = base_ch
 
+        self.num_scales = kwargs.get('num_scales', 3)
+        assert self.num_scales >= 1 and self.num_scales <= 3, 'number of scales must be 1, 2, or 3'
+        assert self.num_scales == len(patch_sizes)
+        assert self.num_scales == len(window_sizes)
+        self.use_fhm = kwargs.get('use_fhm', True)
+
         self.Encoder = nn.ModuleList([
             EBlock(base_ch, num_res),
             EBlock(base_ch*2, num_res),
@@ -144,110 +150,191 @@ class MSU(nn.Module):
             BasicConv(base_ch * 2, base_ch, kernel_size=1, relu=True, stride=1),
         ])
 
-        self.OutConvs = nn.ModuleList(
-            [
-                BasicConv(base_ch,     out_ch, 3, 1, relu=False),
+        self.OutConvs = nn.ModuleList([BasicConv(base_ch, out_ch, 3, 1, relu=False),])
+        if self.num_scales == 3:
+            self.OutConvs.extend([
                 BasicConv(base_ch * 2, out_ch, 3, 1, relu=False),
-                BasicConv(base_ch * 4, out_ch, 3, 1, relu=False),
-            ]
-        )
+                BasicConv(base_ch * 4, out_ch, 3, 1, relu=False)    
+            ])
+        elif self.num_scales == 2:
+            self.OutConvs.append(BasicConv(base_ch * 2, out_ch, 3, 1, relu=False))
 
-        self.FHMs = nn.ModuleList([
-            FHM(base_ch, base_ch*2, base_ch*4, base_ch*1),
-            FHM(base_ch, base_ch*2, base_ch*4, base_ch*2)
-        ])
+        if self.use_fhm:
+            self.FHMs = nn.ModuleList([
+                FHM(base_ch, base_ch*2, base_ch*4, base_ch*1),
+                FHM(base_ch, base_ch*2, base_ch*4, base_ch*2)
+            ])
 
         self.patch_sizes = patch_sizes
         self.embed_dims = [2**i * base_ch * mul_elements(to_2tuple(self.patch_sizes[i])) 
                            for i in range(len(self.patch_sizes))]
-        self.patch_embeds = nn.ModuleList([
-            PatchEmbed(
-                img_size=img_size, patch_size=self.patch_sizes[0],
-                in_chans=in_ch, embed_dim=self.embed_dims[0]),
-            PatchEmbed(
-                img_size=img_size//2, patch_size=self.patch_sizes[1],
-                in_chans=in_ch, embed_dim=self.embed_dims[1]),
-            PatchEmbed(
-                img_size=img_size//4, patch_size=self.patch_sizes[2],
-                in_chans=in_ch, embed_dim=self.embed_dims[2]),
-        ])
-        self.swinT_blocks = nn.ModuleList([
-            nn.Sequential(
-                *(SwinTransformerBlock(self.embed_dims[0], 
-                                       self.patch_embeds[0].patches_resolution,
-                                       num_heads,
-                                       window_size=window_sizes[0],
-                                       shift_size=0 if (i % 2 == 0) else window_sizes[0] // 2,
-                                       fused_window_process=fused_window_process) 
-                for i in range(num_swinT))
-            ),
-            nn.Sequential(
-                *(SwinTransformerBlock(self.embed_dims[1], 
-                                       self.patch_embeds[1].patches_resolution,
-                                       num_heads,
-                                       window_size=window_sizes[1],
-                                       shift_size=0 if (i % 2 == 0) else window_sizes[1] // 2,
-                                       fused_window_process=fused_window_process)
-                for i in range(num_swinT))
-            ),
-            nn.Sequential(
-                *(SwinTransformerBlock(self.embed_dims[2], 
-                                       self.patch_embeds[2].patches_resolution,
-                                       num_heads,
-                                       window_size=window_sizes[2],
-                                       shift_size=0 if (i % 2 == 0) else window_sizes[2] // 2,
-                                       fused_window_process=fused_window_process)
-                for i in range(num_swinT))
-            )
-        ])
-
-        self.FABs = nn.ModuleList([
-            FAB(base_ch, base_ch * 2),
-            FAB(base_ch * 2, base_ch * 4)
-        ])
+        if self.num_scales == 3:
+            self.patch_embeds = nn.ModuleList([
+                PatchEmbed(
+                    img_size=img_size, patch_size=self.patch_sizes[0],
+                    in_chans=in_ch, embed_dim=self.embed_dims[0]),
+                PatchEmbed(
+                    img_size=img_size//2, patch_size=self.patch_sizes[1],
+                    in_chans=in_ch, embed_dim=self.embed_dims[1]),
+                PatchEmbed(
+                    img_size=img_size//4, patch_size=self.patch_sizes[2],
+                    in_chans=in_ch, embed_dim=self.embed_dims[2])
+            ])
+        elif self.num_scales == 2:
+            self.patch_embeds = nn.ModuleList([
+                PatchEmbed(
+                    img_size=img_size, patch_size=self.patch_sizes[0],
+                    in_chans=in_ch, embed_dim=self.embed_dims[0]),
+                PatchEmbed(
+                    img_size=img_size//2, patch_size=self.patch_sizes[1],
+                    in_chans=in_ch, embed_dim=self.embed_dims[1]),
+            ])
+        else:
+            self.patch_embeds = nn.ModuleList([
+                PatchEmbed(
+                    img_size=img_size, patch_size=self.patch_sizes[0],
+                    in_chans=in_ch, embed_dim=self.embed_dims[0]),
+            ])
+        
+        if self.num_scales == 3:
+            self.swinT_blocks = nn.ModuleList([
+                nn.Sequential(
+                    *(SwinTransformerBlock(self.embed_dims[0], 
+                        self.patch_embeds[0].patches_resolution,
+                        num_heads,
+                        window_size=window_sizes[0],
+                        shift_size=0 if (i % 2 == 0) else window_sizes[0] // 2,
+                        fused_window_process=fused_window_process)
+                    for i in range(num_swinT))
+                ),
+                nn.Sequential(
+                    *(SwinTransformerBlock(self.embed_dims[1], 
+                        self.patch_embeds[1].patches_resolution,
+                        num_heads,
+                        window_size=window_sizes[1],
+                        shift_size=0 if (i % 2 == 0) else window_sizes[1] // 2,
+                        fused_window_process=fused_window_process)
+                    for i in range(num_swinT))
+                ),
+                nn.Sequential(
+                    *(SwinTransformerBlock(self.embed_dims[2], 
+                        self.patch_embeds[2].patches_resolution,
+                        num_heads,
+                        window_size=window_sizes[2],
+                        shift_size=0 if (i % 2 == 0) else window_sizes[2] // 2,
+                        fused_window_process=fused_window_process)
+                    for i in range(num_swinT))
+                )
+            ])
+        elif self.num_scales == 2:
+            self.swinT_blocks = nn.ModuleList([
+                nn.Sequential(
+                    *(SwinTransformerBlock(self.embed_dims[0], 
+                        self.patch_embeds[0].patches_resolution,
+                        num_heads,
+                        window_size=window_sizes[0],
+                        shift_size=0 if (i % 2 == 0) else window_sizes[0] // 2,
+                        fused_window_process=fused_window_process)
+                    for i in range(num_swinT))
+                ),
+                nn.Sequential(
+                    *(SwinTransformerBlock(self.embed_dims[1], 
+                        self.patch_embeds[1].patches_resolution,
+                        num_heads,
+                        window_size=window_sizes[1],
+                        shift_size=0 if (i % 2 == 0) else window_sizes[1] // 2,
+                        fused_window_process=fused_window_process)
+                    for i in range(num_swinT))
+                )
+            ])
+        else:
+            self.swinT_blocks = nn.ModuleList([
+                nn.Sequential(
+                    *(SwinTransformerBlock(self.embed_dims[0], 
+                        self.patch_embeds[0].patches_resolution,
+                        num_heads,
+                        window_size=window_sizes[0],
+                        shift_size=0 if (i % 2 == 0) else window_sizes[0] // 2,
+                        fused_window_process=fused_window_process)
+                    for i in range(num_swinT))
+                )
+            ])
+        
+        if self.num_scales == 3:
+            self.FABs = nn.ModuleList([
+                FAB(base_ch, base_ch * 2),
+                FAB(base_ch * 2, base_ch * 4)
+            ])
+        elif self.num_scales == 2:
+            self.FABs = nn.ModuleList([FAB(base_ch, base_ch * 2)])
+            self.DownConvs = nn.ModuleList([
+                BasicConv(base_ch * 2, base_ch * 4, kernel_size=3, relu=True, stride=2)
+            ])
+        else:
+            self.DownConvs = nn.ModuleList([
+                BasicConv(base_ch, base_ch * 2, kernel_size=3, relu=True, stride=2),
+                BasicConv(base_ch * 2, base_ch * 4, kernel_size=3, relu=True, stride=2)
+            ])
 
     def forward(self, x):
         outputs = dict()
 
-        x_2 = F.interpolate(x, scale_factor=0.5)      # input of 2nd scale
-        x_3 = F.interpolate(x_2, scale_factor=0.5)    # input of 3rd scale
-
         z_1 = self.patch_embeds[0](x)
-        z_2 = self.patch_embeds[1](x_2)
-        z_3 = self.patch_embeds[2](x_3)
-
         z_1 = self.swinT_blocks[0](z_1)
-        z_2 = self.swinT_blocks[1](z_2)
-        z_3 = self.swinT_blocks[2](z_3)
-
-        z_1 = rearrange(z_1, 'b (hr wr) (ph pw c) -> b c (hr ph) (wr pw)', hr=64, ph=self.patch_sizes[0], c=self.base_channel)
-        z_2 = rearrange(z_2, 'b (hr wr) (ph pw c) -> b c (hr ph) (wr pw)', hr=64, ph=self.patch_sizes[1], c=self.base_channel*2)
-        z_3 = rearrange(z_3, 'b (hr wr) (ph pw c) -> b c (hr ph) (wr pw)', hr=64, ph=self.patch_sizes[2], c=self.base_channel*4)
+        z_1 = rearrange(z_1, 'b (hr wr) (ph pw c) -> b c (hr ph) (wr pw)',
+                        hr=64, ph=self.patch_sizes[0], c=self.base_channel)
+        if self.num_scales >= 2:
+            x_2 = F.interpolate(x, scale_factor=0.5)      # input of 2nd scale
+            z_2 = self.patch_embeds[1](x_2)
+            z_2 = self.swinT_blocks[1](z_2)
+            z_2 = rearrange(z_2, 'b (hr wr) (ph pw c) -> b c (hr ph) (wr pw)',
+                            hr=64, ph=self.patch_sizes[1], c=self.base_channel*2)
+        if self.num_scales >= 3:
+            x_3 = F.interpolate(x_2, scale_factor=0.5)    # input of 3rd scale
+            z_3 = self.patch_embeds[2](x_3)
+            z_3 = self.swinT_blocks[2](z_3)
+            z_3 = rearrange(z_3, 'b (hr wr) (ph pw c) -> b c (hr ph) (wr pw)',
+                            hr=64, ph=self.patch_sizes[2], c=self.base_channel*4)
 
         res1 = self.Encoder[0](z_1)
 
-        z_2 = self.FABs[0](res1, z_2)
+        if self.num_scales >= 2:
+            z_2 = self.FABs[0](res1, z_2)
+        else:
+            z_2 = self.DownConvs[0](res1)
+        
         res2 = self.Encoder[1](z_2)
-
-        z_3 = self.FABs[1](res2, z_3)
+        
+        if self.num_scales >= 3:
+            z_3 = self.FABs[1](res2, z_3)
+        elif self.num_scales == 2:
+            z_3 = self.DownConvs[0](res2)
+        else:
+            z_3 = self.DownConvs[1](res2)
+        
         res3 = self.Encoder[2](z_3)
 
-        z_1to2 = F.interpolate(res1, scale_factor=0.5)
-        z_2to1 = F.interpolate(res2, scale_factor=2)
-        z_3to2 = F.interpolate(res3, scale_factor=2)
-        z_3to1 = F.interpolate(z_3to2, scale_factor=2)
-
-        f1 = self.FHMs[0](res1, z_2to1, z_3to1)
-        f2 = self.FHMs[1](z_1to2, res2, z_3to2)
+        if self.use_fhm:
+            z_1to2 = F.interpolate(res1, scale_factor=0.5)
+            z_2to1 = F.interpolate(res2, scale_factor=2)
+            z_3to2 = F.interpolate(res3, scale_factor=2)
+            z_3to1 = F.interpolate(z_3to2, scale_factor=2)
+            f1 = self.FHMs[0](res1, z_2to1, z_3to1)
+            f2 = self.FHMs[1](z_1to2, res2, z_3to2)
+        else:
+            f1 = res1
+            f2 = res2
 
         d3 = self.Decoder[2](res3)
-        d3_out = self.OutConvs[2](d3)
-        outputs[0.25] = torch.sigmoid(d3_out+x_3)
+        if self.num_scales >= 3:
+            d3_out = self.OutConvs[2](d3)
+            outputs[0.25] = torch.sigmoid(d3_out+x_3)
 
         t = torch.cat([self.UpConvs[0](d3), f2], dim=1)
         d2 = self.Decoder[1](self.Convs[0](t))
-        d2_out = self.OutConvs[1](d2)
-        outputs[0.5] = torch.sigmoid(d2_out+x_2)
+        if self.num_scales >= 2:
+            d2_out = self.OutConvs[1](d2)
+            outputs[0.5] = torch.sigmoid(d2_out+x_2)
 
         t = torch.cat([self.UpConvs[1](d2), f1], dim=1)
         d1 = self.Decoder[0](self.Convs[1](t))
