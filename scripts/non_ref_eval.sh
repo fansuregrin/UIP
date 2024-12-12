@@ -1,8 +1,5 @@
-GREEN="\e[32m"
-RED="\e[31m"
-BOLD="\e[1m"
-BOLD_GREEN="\e[1;32m"
-ENDSTYLE="\e[0m"
+script_dir=$(dirname $0)
+source ${script_dir}/ansi_escape.sh
 
 ds_names=(U45 RUIE_Color90 UPoor200 UW2023)
 
@@ -42,7 +39,6 @@ do
     fi
 done
 
-script_dir=$(dirname $0)
 python ${script_dir}/get_nonref_vals.py \
     ${model_v} \
     ${net} \

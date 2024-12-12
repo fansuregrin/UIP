@@ -1,8 +1,5 @@
-GREEN="\e[32m"
-RED="\e[31m"
-BOLD="\e[1m"
-BOLD_GREEN="\e[1;32m"
-ENDSTYLE="\e[0m"
+script_dir=$(dirname $0)
+source ${script_dir}/ansi_escape.sh
 
 declare -A refer_dict
 refer_dict=([EUVP515]="/DataA/pwz/workshop/Datasets/EUVP_Dataset/test_samples/GTr"
