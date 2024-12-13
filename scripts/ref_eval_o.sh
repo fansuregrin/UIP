@@ -21,7 +21,7 @@ do
     target_dir="${res_dir}/${ds_name}"
     if [ -d ${target_dir} ]
     then
-        python ./ref_eval.py \
+        python ./ref_eval_pd.py \
             -inp "${target_dir}" \
             -ref "${refer_dict[${ds_name}]}" \
             -out "${target_dir}" \
