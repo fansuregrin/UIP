@@ -11,7 +11,7 @@ then
 fi
 res_dir=${1}
 
-ds_names="LSUI EUVP515 UIEB100 OceanEx"
+ds_names="LSUI_Test EUVP515 UIEB100 OceanEx"
 python ${script_dir}/get_eval_o.py ${res_dir} \
     --eval_type ref \
     --ds_names ${ds_names} \
