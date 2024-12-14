@@ -20,7 +20,7 @@ raw_epochs=${4}
 load_prefix=${5}
 
 epochs_space_sep=$(echo ${raw_epochs} | tr ',' ' ')
-ds_names="LSUI_Test EUVP515 UIEB100 OceanEx"
+ds_names="LSUI EUVP515 UIEB100 OceanEx"
 python ${script_dir}/get_eval_m.py \
     ${model_v} \
     ${net} \
