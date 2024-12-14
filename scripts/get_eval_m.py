@@ -76,7 +76,7 @@ if num_epoch > 1:
             overall_df.loc[len(overall_df)-1, metric] = overall_df[metric].mean()
 
     for ds in ds_dfs:
-        res_dir = f'{args.root_dir}/{args.model_v}/{args.net}/{args.name}/{ds_name}'
+        res_dir = f'{args.root_dir}/{args.model_v}/{args.net}/{args.name}/{ds}'
         print(f'[{BOLD_BLUE}{res_dir}{ENDSTYLE}]:')
         if not ds_dfs[ds].empty:
             print(ds_dfs[ds].to_string(index=False, float_format=float_fmt))
