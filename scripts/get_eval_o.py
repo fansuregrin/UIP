@@ -48,9 +48,11 @@ for ds_name in ds_names:
         row[metric] = src_row[metric].values[0]
     overall_df.loc[len(overall_df)] = row
 
-overall_df.loc[len(overall_df)] = {'dataset': 'average'}
-for metric in metric_names:
-    overall_df.loc[len(overall_df)-1, metric] = overall_df[metric].mean()
+if not overall_df.empty:
+    overall_df.loc[len(overall_df)] = {'dataset': 'average'}
+    for metric in metric_names:
+        overall_df.loc[len(overall_df)-1, metric] = overall_df[metric].mean()
 
 print(f'reference eval of [{GREEN}{args.results_dir}/{{{','.join(ds_names)}}}{ENDSTYLE}]')
-print(overall_df.to_string(index=False, float_format=float_fmt))
+if not overall_df.empty:
+    print(overall_df.to_string(index=False, float_format=float_fmt))

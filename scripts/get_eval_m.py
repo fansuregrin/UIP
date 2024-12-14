@@ -38,6 +38,7 @@ float_fmt = f'{{:.{args.metric_precision}f}}'.format
 num_epoch = len(args.epochs)
 ds_names = args.ds_names
 metric_names = args.metric_names
+
 if num_epoch > 1:
     columns = ['epoch',] + metric_names
     ds_dfs = {ds: pd.DataFrame(columns=columns) for ds in ds_names}
@@ -60,22 +61,29 @@ if num_epoch > 1:
             for metric in metric_names:
                 row[metric] = src_row[metric].values[0]
             ds_df.loc[len(ds_df)] = row
+        
+        if ds_df.empty: continue
         ds_df.loc[len(ds_df)] = {'epoch': 'average'}
         overall_df.loc[len(overall_df)] = {'dataset': ds_name}
         for metric in metric_names:
             avg_val = ds_df[metric].mean()
             ds_df.loc[len(ds_df)-1, metric] = avg_val
             overall_df.loc[len(overall_df)-1, metric] = avg_val
-    overall_df.loc[len(overall_df)] = {'dataset': 'average'}
-    for metric in metric_names:
-        overall_df.loc[len(overall_df)-1, metric] = overall_df[metric].mean()
+    
+    if not overall_df.empty:
+        overall_df.loc[len(overall_df)] = {'dataset': 'average'}
+        for metric in metric_names:
+            overall_df.loc[len(overall_df)-1, metric] = overall_df[metric].mean()
 
     for ds in ds_dfs:
-        print(f'{BOLD_BLUE}{ds}:{ENDSTYLE}')
-        print(ds_dfs[ds].to_string(index=False, float_format=float_fmt))
+        res_dir = f'{args.root_dir}/{args.model_v}/{args.net}/{args.name}/{ds_name}'
+        print(f'[{BOLD_BLUE}{res_dir}{ENDSTYLE}]:')
+        if not ds_dfs[ds].empty:
+            print(ds_dfs[ds].to_string(index=False, float_format=float_fmt))
         print()
     print(f"Average on [{BLUE}{','.join(ds_names)}{ENDSTYLE}]")
-    print(overall_df.to_string(index=False, float_format=float_fmt))
+    if not overall_df.empty:
+        print(overall_df.to_string(index=False, float_format=float_fmt))
 else:
     overall_df = pd.DataFrame(columns=['dataset',] + metric_names)
     for ds_name in ds_names:
@@ -95,10 +103,12 @@ else:
             row[metric] = src_row[metric].values[0]
         overall_df.loc[len(overall_df)] = row
 
-    overall_df.loc[len(overall_df)] = {'dataset': 'average'}
-    for metric in metric_names:
-        overall_df.loc[len(overall_df)-1, metric] = overall_df[metric].mean()
+    if not overall_df.empty:
+        overall_df.loc[len(overall_df)] = {'dataset': 'average'}
+        for metric in metric_names:
+            overall_df.loc[len(overall_df)-1, metric] = overall_df[metric].mean()
 
     print(f'eval of [{GREEN}{args.root_dir}/{args.model_v}/\
 {args.net}/{args.name}/{{{','.join(ds_names)}}}/{args.load_prefix}_{args.epochs[0]}{ENDSTYLE}]')
-    print(overall_df.to_string(index=False, float_format=float_fmt))
+    if not overall_df.empty:
+        print(overall_df.to_string(index=False, float_format=float_fmt))
