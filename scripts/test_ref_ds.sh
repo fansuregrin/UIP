@@ -1,8 +1,6 @@
-GREEN="\e[32m"
-RED="\e[31m"
-BOLD="\e[1m"
-BOLD_GREEN="\e[1;32m"
-ENDSTYLE="\e[0m"
+script_dir=$(dirname $0)
+proj_dir=$(dirname ${script_dir})
+source ${script_dir}/ansi_escape.sh
 
 declare -A ds_dict
 ds_dict=([LSUI]="configs/dataset/lsui.yaml"
@@ -36,7 +34,7 @@ epochs=$(echo ${raw_epochs} | tr ',' ' ')
 
 for ds_name in ${!ds_dict[@]};
 do
-    python ./test.py \
+    python ${proj_dir}/test.py \
     --model_name ${model_name} \
     --ds_cfg ${ds_dict[${ds_name}]} \
     --net_cfg ${net_cfg} \
