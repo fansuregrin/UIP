@@ -1,4 +1,5 @@
 script_dir=$(dirname $0)
+proj_dir=$(dirname ${script_dir})
 source ${script_dir}/ansi_escape.sh
 
 declare -A refer_dict
@@ -32,7 +33,7 @@ do
         target_dir="results/${model_v}/${net}/${name}/${ds_name}/${load_prefix}_${epoch}"
         if [ -d ${target_dir} ]
         then
-            python ./ref_eval_pd.py \
+            python ${proj_dir}/ref_eval_pd.py \
                 -inp "${target_dir}/single/predicted" \
                 -ref "${refer_dict[${ds_name}]}" \
                 -out "${target_dir}" \
@@ -45,9 +46,13 @@ do
 done
 
 epochs_space_sep=$(echo ${raw_epochs} | tr ',' ' ')
-python ${script_dir}/get_ref_vals_m_v2.py \
+ds_names=$(echo "${!refer_dict[@]}")
+python ${script_dir}/get_eval_m.py \
     ${model_v} \
     ${net} \
     ${name} \
     ${epochs_space_sep} \
+    --eval_type ref \
+    --ds_names ${ds_names} \
+    --metric_names psnr ssim \
     --load_prefix ${load_prefix}

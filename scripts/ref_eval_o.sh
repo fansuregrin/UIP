@@ -1,4 +1,5 @@
 script_dir=$(dirname $0)
+proj_dir=$(dirname ${script_dir})
 source ${script_dir}/ansi_escape.sh
 
 declare -A refer_dict
@@ -21,7 +22,7 @@ do
     target_dir="${res_dir}/${ds_name}"
     if [ -d ${target_dir} ]
     then
-        python ./ref_eval_pd.py \
+        python ${proj_dir}/ref_eval_pd.py \
             -inp "${target_dir}" \
             -ref "${refer_dict[${ds_name}]}" \
             -out "${target_dir}" \
@@ -31,18 +32,23 @@ do
     fi
 done
 
-echo -e "reference eval of [${GREEN}${res_dir}${ENDSTYLE}]"
-echo "================================================"
-printf "${BOLD}%-15s %-8s %-8s %-8s${ENDSTYLE}\n" ds_name psnr ssim mse
-echo "------------------------------------------------"
-for ds_name in ${!refer_dict[@]}
-do
-    target_file="${res_dir}/${ds_name}/ref_eval.csv"
-    if [ -f "${target_file}" ]; then
-        psnr=`tail "${target_file}" -n 1 | awk -F, '{print $2}'`
-        ssim=`tail "${target_file}" -n 1 | awk -F, '{print $3}'`
-        mse=`tail "${target_file}" -n 1 | awk -F, '{print $4}'`
-        printf "%-15s %-8s %-8s %-8s\n" ${ds_name} ${psnr} ${ssim} ${mse}
-    fi
-done
-echo "================================================"
+ds_names=$(echo "${!refer_dict[@]}")
+python ${script_dir}/get_eval_o.py ${res_dir} \
+    --eval_type ref \
+    --ds_names ${ds_names} \
+    --metric_names psnr ssim
+# echo -e "reference eval of [${GREEN}${res_dir}${ENDSTYLE}]"
+# echo "================================================"
+# printf "${BOLD}%-15s %-8s %-8s %-8s${ENDSTYLE}\n" ds_name psnr ssim mse
+# echo "------------------------------------------------"
+# for ds_name in ${!refer_dict[@]}
+# do
+#     target_file="${res_dir}/${ds_name}/ref_eval.csv"
+#     if [ -f "${target_file}" ]; then
+#         psnr=`tail "${target_file}" -n 1 | awk -F, '{print $2}'`
+#         ssim=`tail "${target_file}" -n 1 | awk -F, '{print $3}'`
+#         mse=`tail "${target_file}" -n 1 | awk -F, '{print $4}'`
+#         printf "%-15s %-8s %-8s %-8s\n" ${ds_name} ${psnr} ${ssim} ${mse}
+#     fi
+# done
+# echo "================================================"

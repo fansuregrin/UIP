@@ -1,4 +1,5 @@
 script_dir=$(dirname $0)
+proj_dir=$(dirname ${script_dir})
 source ${script_dir}/ansi_escape.sh
 
 ds_names=(U45 RUIE_Color90 UPoor200 UW2023)
@@ -28,7 +29,7 @@ do
         target_dir="results/${model_v}/${net}/${name}/${ds_name}/${load_prefix}_${epoch}"
         if [ -d ${target_dir} ]
         then
-            python ./nonref_eval_pd.py \
+            python ${proj_dir}/nonref_eval_pd.py \
                 -inp "${target_dir}/single/predicted" \
                 -out "${target_dir}"    
         else
@@ -38,9 +39,12 @@ do
 done
 
 epochs_space_sep=$(echo ${raw_epochs} | tr ',' ' ')
-python ${script_dir}/get_nonref_vals.py \
+python ${script_dir}/get_eval_m.py \
     ${model_v} \
     ${net} \
     ${name} \
     ${epochs_space_sep} \
-    ${load_prefix}
+    --eval_type nonref \
+    --ds_names ${ds_names} \
+    --metric_names uranker uciqe uiqm \
+    --load_prefix ${load_prefix}

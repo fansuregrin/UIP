@@ -8,16 +8,17 @@ sys.path.append(os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
 from utils.ansi_escape import *
 
 
-parser = argparse.ArgumentParser(prog="Fetch full-reference metrics values from files")
+parser = argparse.ArgumentParser(prog="Get and display evaluation data from files")
 parser.add_argument('model_v', type=str, help='model version')
 parser.add_argument('net', type=str, help='network name')
 parser.add_argument('name', type=str, help='checkpoint name')
 parser.add_argument('epochs', nargs='+', type=int, help='epochs to fetch')
+parser.add_argument('--eval_type', type=str, default='ref', choices=['ref', 'nonref'])
 parser.add_argument('--ds_names', type=str, nargs='+',
     default=['LSUI','EUVP515','UIEB100','OceanEx'])
 parser.add_argument('--load_prefix', type=str, default='weights',
     help='the prefix of weight file')
-parser.add_argument('--root_dir', type=str, default='./results',
+parser.add_argument('--root_dir', type=str, default='results',
     help='path to root directory of results')
 parser.add_argument('--file_fmt', type=str, default='pkl', choices=['pkl', 'csv', 'xlsx'],
     help='extension name of the data file')
@@ -32,6 +33,7 @@ read_methods = {
     'xlsx': pd.read_excel,
 }
 
+filename = f'{args.eval_type}_eval.{args.file_fmt}'
 float_fmt = f'{{:.{args.metric_precision}f}}'.format
 num_epoch = len(args.epochs)
 ds_names = args.ds_names
@@ -44,7 +46,7 @@ if num_epoch > 1:
         ds_df = ds_dfs[ds_name]
         for epoch in args.epochs:
             target_fifle = f'{args.root_dir}/{args.model_v}/{args.net}/\
-{args.name}/{ds_name}/{args.load_prefix}_{epoch}/ref_eval.{args.file_fmt}'
+{args.name}/{ds_name}/{args.load_prefix}_{epoch}/{filename}'
             if not os.path.exists(target_fifle): continue
             read_fn = read_methods.get(args.file_fmt, None)
             if read_fn is None:
@@ -78,7 +80,7 @@ else:
     overall_df = pd.DataFrame(columns=['dataset',] + metric_names)
     for ds_name in ds_names:
         target_fifle = f'{args.root_dir}/{args.model_v}/{args.net}/\
-{args.name}/{ds_name}/{args.load_prefix}_{args.epochs[0]}/ref_eval.{args.file_fmt}'
+{args.name}/{ds_name}/{args.load_prefix}_{args.epochs[0]}/{filename}'
         if not os.path.exists(target_fifle): continue
         read_fn = read_methods.get(args.file_fmt, None)
         if read_fn is None:
@@ -97,6 +99,6 @@ else:
     for metric in metric_names:
         overall_df.loc[len(overall_df)-1, metric] = overall_df[metric].mean()
 
-    print(f'reference eval of [{GREEN}{args.root_dir}/{args.model_v}/\
-{args.net}/{args.name}/{args.load_prefix}_{args.epochs[0]}{ENDSTYLE}]')
+    print(f'eval of [{GREEN}{args.root_dir}/{args.model_v}/\
+{args.net}/{args.name}/{{{','.join(ds_names)}}}/{args.load_prefix}_{args.epochs[0]}{ENDSTYLE}]')
     print(overall_df.to_string(index=False, float_format=float_fmt))
