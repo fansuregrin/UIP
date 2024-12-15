@@ -12,10 +12,15 @@ if [ $# -lt 1 ]
 then
     echo -e "${RED}PLEASE PASS IN THE FOLLOWING ARGUMENTS IN ORDER!${ENDSTYLE}"
     echo -e "1) result_dir"
+    echo -e "2) sub_path (optional)"
     echo -e "for example: \"${BOLD_GREEN}bash ${0} /path/to/results/\""
     exit -1
 fi
 res_dir=${1}
+sub_path=
+if [ $# -gt 1 ]; then
+    sub_path=${2}
+fi
 
 for ds_name in ${!refer_dict[@]}
 do
@@ -23,7 +28,7 @@ do
     if [ -d ${target_dir} ]
     then
         python ${proj_dir}/ref_eval_pd.py \
-            -inp "${target_dir}" \
+            -inp "${target_dir}/${sub_path}" \
             -ref "${refer_dict[${ds_name}]}" \
             -out "${target_dir}" \
             --resize

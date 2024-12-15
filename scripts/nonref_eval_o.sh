@@ -8,10 +8,15 @@ if [ $# -lt 1 ]
 then
     echo -e "${RED}PLEASE PASS IN THE FOLLOWING ARGUMENTS IN ORDER!${ENDSTYLE}"
     echo -e "1) result_dir"
+    echo -e "2) sub_path (optional)"
     echo -e "for example: \"${BOLD_GREEN}bash ${0} /path/to/results/\""
     exit -1
 fi
 res_dir=${1}
+sub_path=
+if [ $# -gt 1 ]; then
+    sub_path=${2}
+fi
 
 for ds_name in ${ds_names[@]}
 do
@@ -19,7 +24,7 @@ do
     if [ -d ${target_dir} ]
     then
         python ${proj_dir}/nonref_eval_pd.py \
-            -inp "${target_dir}" \
+            -inp "${target_dir}/${sub_path}" \
             -out "${target_dir}"
     else
         echo -e "${RED}[${target_dir}]${ENDSTYLE} not exist!"
