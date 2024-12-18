@@ -81,7 +81,7 @@ epochs=${4}
 
 
 ${dry_run}python ${script_dir}/get_eval_m.py \
-    ${model_v} \
+    ${model_name} \
     ${net} \
     ${name} \
     ${epochs} \
