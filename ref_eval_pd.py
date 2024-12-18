@@ -66,13 +66,15 @@ if __name__ == '__main__':
     parser.add_argument('-outfmt', '--output_format', type=str, 
         default=['csv', 'pkl'], nargs='+', choices=['csv', 'pkl', 'tex', 'xlsx'],
         help='the ouput format of evaluation results')
+    parser.add_argument('--window_size', type=int, default=11,
+        help='the window size for calculating ssim')
     args = parser.parse_args()
     if args.output_dir == '':
         args.output_dir = args.input_dir
 
     metrics = OrderedDict(
         psnr = PSNR(max_val=1.0),
-        ssim = SSIM(window_size=11, max_val=1.0),
+        ssim = SSIM(window_size=args.window_size, max_val=1.0),
         mse  = MSE(reduction='mean'),
     )
     columns = ['img_name',] + list(metrics.keys())
