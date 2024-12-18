@@ -202,22 +202,25 @@ class ImgEnhanceModel(BaseModel):
         metrics['psnr'] = psnr(pred_imgs, ref_imgs, 1.0)
         metrics['ssim'] = ssim(pred_imgs, ref_imgs, 11).mean()
 
+    def _log_training_details(self):
+        if self.logger is None: return
+
+        self.logger.info(f"Starting Training Process...")
+        for k, v in self.cfg.items():
+            self.logger.info(f"{k}: {v}")
+        self.logger.info("network config details:")
+        for k, v in self.net_cfg.items():
+            self.logger.info(f"  {k}: {v}")
+        self.logger.info("lr_scheduler config details:")
+        for k, v in self.lr_scheduler_cfg.items():
+            self.logger.info(f"  {k}: {v}")
+
     def train(self):
         assert self.mode == 'train', f"The mode must be 'train', but got {self.mode}"
         
         seed_everything(self.seed)
-
-        if not self.logger is None:
-            self.logger.info(f"Starting Training Process...")
-            for k, v in self.cfg.items():
-                self.logger.info(f"{k}: {v}")
-            self.logger.info("network config details:")
-            for k, v in self.net_cfg.items():
-                self.logger.info(f"  {k}: {v}")
-            self.logger.info("lr_scheduler config details:")
-            for k, v in self.lr_scheduler_cfg.items():
-                self.logger.info(f"  {k}: {v}")
-
+        self._log_training_details()
+        
         if self.start_epoch > 0:
             load_prefix = self.cfg.get('load_prefix', None)
             if load_prefix:
@@ -237,8 +240,8 @@ class ImgEnhanceModel(BaseModel):
                 # train one batch
                 self.train_one_batch(batch)
                 
-                # validation
-                if (iteration_index % self.val_interval == 0) or (i == len(self.train_dl)-1):
+                # validate one batch
+                if (iteration_index % self.val_interval == 0):
                     val_batch = next(iter(self.val_dl))
                     self.validate_one_batch(val_batch, iteration_index)
                     self.write_tensorboard(iteration_index)
@@ -277,18 +280,18 @@ class ImgEnhanceModel(BaseModel):
     def write_tensorboard(self, iteration: int):
         for loss_name in self.train_loss.keys():
             self.tb_writer.add_scalars(f'loss/{loss_name}',
-                                       {
-                                           'train': self.train_loss[loss_name],
-                                           'val': self.val_loss[loss_name],
-                                       },
-                                       iteration)
+                {
+                    'train': self.train_loss[loss_name],
+                    'val': self.val_loss[loss_name],
+                },
+                iteration)
         for metric_name in self.train_metrics.keys():
             self.tb_writer.add_scalars(f'metrics/{metric_name}',
-                                       {
-                                           'train': self.train_metrics[metric_name],
-                                           'val': self.val_metrics[metric_name],
-                                       },
-                                       iteration)
+                {
+                    'train': self.train_metrics[metric_name],
+                    'val': self.val_metrics[metric_name],
+                },
+                iteration)
     
     def save_network_weights(self, epoch: int):
         load_prefix = self.cfg.get('load_prefix', None)
@@ -419,7 +422,8 @@ class ImgEnhanceModel(BaseModel):
                 )
             )
     
-    def _gen_comparison_img(self, inp_imgs: Tensor, pred_imgs: Tensor, ref_imgs: Union[Tensor, None]=None):
+    def _gen_comparison_img(self, inp_imgs: Tensor, pred_imgs: Tensor, 
+        ref_imgs: Union[Tensor, None]=None):
         inp_imgs = torch.cat([t for t in inp_imgs], dim=2)
         pred_imgs = torch.cat([t for t in pred_imgs], dim=2)
         inp_imgs = (inp_imgs.cpu().numpy().transpose(1,2,0) * 255).astype(np.uint8)
@@ -762,6 +766,39 @@ class ImgEnhanceModel8(ImgEnhanceModel7):
             parser.add_argument("--lambda_mae", type=float, default=1.0, help="weight of MAE loss")
             parser.add_argument("--lambda_ssim", type=float, default=1.0, help="weight of SSIM loss")
             parser.add_argument("--lambda_four", type=float, default=1.0, help="weight of FourDomain loss")
+            parser.add_argument("--l1_reduction", type=str, default='mean')
+        return parser
+
+@_models.register('ie9')
+class ImgEnhanceModel9(ImgEnhanceModel):
+    def _set_loss_fn(self):
+        self.mae_loss_fn = nn.L1Loss(reduction=self.cfg['l1_reduction']).to(self.device)
+        self.ssim_loss_fn = SSIMLoss(11).to(self.device)
+        self.four_loss_fn = FourDomainLoss2().to(self.device)
+        self.edge_loss_fn = EdgeLoss().to(self.device)
+        self.lambda_mae  = self.cfg['lambda_mae']
+        self.lambda_ssim = self.cfg['lambda_ssim']
+        self.lambda_four = self.cfg['lambda_four']
+        self.lambda_edge = self.cfg['lambda_edge']
+    
+    def _calculate_loss(self, ref_imgs, pred_imgs, train=True):
+        loss = self.train_loss if train else self.val_loss
+        loss['mae'] = self.mae_loss_fn(pred_imgs, ref_imgs)
+        loss['ssim'] = self.ssim_loss_fn(pred_imgs, ref_imgs)
+        loss['four'] = self.four_loss_fn(pred_imgs, ref_imgs)
+        loss['edge'] = self.edge_loss_fn(pred_imgs, ref_imgs)
+        loss['total'] = self.lambda_mae * loss['mae'] + \
+            self.lambda_ssim * loss['ssim'] +\
+            self.lambda_four * loss['four'] +\
+            self.lambda_edge * loss['edge']
+    
+    @staticmethod
+    def modify_args(parser, mode):
+        if mode == 'train':
+            parser.add_argument("--lambda_mae", type=float, default=1.0, help="weight of MAE loss")
+            parser.add_argument("--lambda_ssim", type=float, default=1.0, help="weight of SSIM loss")
+            parser.add_argument("--lambda_four", type=float, default=1.0, help="weight of FourDomain loss")
+            parser.add_argument("--lambda_edge", type=float, default=1.0, help="weight of Edge loss")
             parser.add_argument("--l1_reduction", type=str, default='mean')
         return parser
 

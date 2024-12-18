@@ -219,7 +219,7 @@ class SegModel(BaseModel):
                 # train one batch
                 self.train_one_batch(batch)
                 # validation
-                if (iteration_index % self.val_interval == 0) or (i == len(self.train_dl)-1):
+                if (iteration_index % self.val_interval == 0):
                     val_batch = next(iter(self.val_dl))
                     self.validate_one_batch(val_batch, iteration_index)
                     self.write_tensorboard(iteration_index)
