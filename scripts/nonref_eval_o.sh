@@ -81,7 +81,7 @@ do
     then
         ${dry_run}python ${proj_dir}/nonref_eval_pd.py \
             -inp "${target_dir}/${sub_path}" \
-            -out "${target_dir}"
+            -out "${target_dir}" \
             --output_format ${output_format}
     else
         echo -e "${RED}[${target_dir}]${ENDSTYLE} not exist!"
