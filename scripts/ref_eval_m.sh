@@ -46,6 +46,10 @@ dry_run=
 
 while true; do
   case "$1" in
+    --load_prefix)
+      load_prefix="$2"
+      shift 2
+      ;;
     --width)
       width="$2"
       shift 2
