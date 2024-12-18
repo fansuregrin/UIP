@@ -2,34 +2,83 @@ script_dir=$(dirname $0)
 proj_dir=$(dirname ${script_dir})
 source ${script_dir}/ansi_escape.sh
 
-declare -A ds_dict
-ds_dict=([U45]="configs/dataset/u45.yaml"
-         [RUIE_Color90]="configs/dataset/ruie_color90.yaml"
-         [UPoor200]="configs/dataset/upoor200.yaml"
-         [UW2023]="configs/dataset/uw2023_256x256.yaml")
 
-if [ $# -lt 5 ]
+################## parse arguments and options ###############################
+short_opt=h,t
+long_opt=help,dry_run,load_prefix:
+options=$(getopt -a --options ${short_opt} --longoptions ${long_opt} -- "$@")
+# echo ${options}
+
+eval set -- "${options}"
+
+help_str="
+Usage:
+ $0 model_name net_cfg name epochs [options]
+
+Test model.
+
+Positional Arguments:
+ model_name           model name
+ net_cfg              path to network config file
+ name                 name of training progress
+ epochs               epochs
+
+Options:
+ --load_prefix <load_prefix>    prefix of the filename of weight file
+ --ds_dict <ds_cfgs>            an associative array that records the dataset and its configuration
+ -t, --dry_run                  just test not run actually
+ -h, --help                     display this help
+"
+
+load_prefix=weights
+ds_dict=${script_dir}/ds_dict/nonref_default.sh
+dry_run=
+
+while true; do
+  case "$1" in
+    --load_prefix)
+      load_prefix="${2}"
+      shift 2
+      ;;
+    --ds_dict)
+      ds_dict="${2}"
+      shift 2
+      ;;
+    -t | --dry_run)
+      dry_run="echo "
+      shift 1
+      ;;
+    -h | --help)
+      echo -e "${help_str}"
+      exit 0
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *)
+      echo "Unexpected option: $1"
+      ;;
+  esac
+done
+
+if [ $# -lt 4 ]
 then
-    echo -e "${RED}PLEASE PASS IN THE FOLLOWING ARGUMENTS IN ORDER!${ENDSTYLE}"
-    echo -e "1) model_name"
-    echo -e "2) net_cfg"
-    echo -e "3) name"
-    echo -e "4) epochs"
-    echo -e "5) load_prefix"
-    echo -e "for example: \"${BOLD_GREEN}bash ${0} ie configs/network/ra_9blocks_2down.yaml LSUI_01 299 weights${ENDSTYLE}\""
-    exit -1
+    echo "${help_str}"
+    exit 1
 fi
+
 model_name=${1}
 net_cfg=${2}
 name=${3}
-raw_epochs=${4}
-load_prefix=${5}
+epochs=${4}
+##############################################################################
 
-epochs=$(echo ${raw_epochs} | tr ',' ' ')
+source ${ds_dict}
 
 for ds_name in ${!ds_dict[@]};
 do
-    python ${proj_dir}/test.py \
+    ${dry_run}python ${proj_dir}/test.py \
     --model_name ${model_name} \
     --ds_cfg ${ds_dict[${ds_name}]} \
     --net_cfg ${net_cfg} \
