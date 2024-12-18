@@ -5,7 +5,7 @@ source ${script_dir}/ansi_escape.sh
 
 ################## parse arguments and options ###############################
 short_opt=h,t
-long_opt=help,load_prefix:,width:,height:,resize,output_format:,window_size:,dry_run
+long_opt=help,dry_run,load_prefix:,width:,height:,resize,output_format:,window_size:,refer_dict:
 options=$(getopt -a --options ${short_opt} --longoptions ${long_opt} -- "$@")
 # echo ${options}
 
@@ -30,6 +30,7 @@ Options:
  --resize                       resize image
  --output_format <format>...    format for saving evaluation data
  --window_size <window_size>    window size for calculating ssim
+ --refer_dict <refer_dict>      
  -t, --dry_run                  just test not run actually
  -h, --help                     display this help
 "
@@ -40,6 +41,7 @@ height=256
 resize=
 output_format="csv pkl"
 window_size=11
+refer_dict="${script_dir}/refer_dict/default.sh"
 dry_run=
 
 while true; do
@@ -62,6 +64,10 @@ while true; do
       ;;
     --window_size)
       window_size="$2"
+      shift 2
+      ;;
+    --refer_dict)
+      refer_dict="$2"
       shift 2
       ;;
     -t | --dry_run)
@@ -94,12 +100,7 @@ epochs=${4}
 ################## parse arguments and options ###############################
 
 
-declare -A refer_dict
-refer_dict=([EUVP515]="/DataA/pwz/workshop/Datasets/EUVP_Dataset/test_samples/GTr"
-            [OceanEx]="/DataA/pwz/workshop/Datasets/ocean_ex/good"
-            [UIEB100]="/DataA/pwz/workshop/Datasets/UIEB100/reference"
-            [LSUI]="/DataA/pwz/workshop/Datasets/LSUI/test/ref")
-
+source ${refer_dict}
 epoch_arr=(${epochs})
 for ds_name in ${!refer_dict[@]}
 do

@@ -5,7 +5,7 @@ source ${script_dir}/ansi_escape.sh
 
 ################## parse arguments and options ###############################
 short_opt=h,t
-long_opt=help,dry_run,load_prefix:
+long_opt=help,dry_run,load_prefix:,ds_dict:
 options=$(getopt -a --options ${short_opt} --longoptions ${long_opt} -- "$@")
 # echo ${options}
 
