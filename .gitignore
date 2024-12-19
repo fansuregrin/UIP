@@ -4,10 +4,10 @@ checkpoints/
 runs/
 samples/
 results/
-*.ipynb
 test_code.py
 figures/
 notebooks/
 test/*.ipynb
 zips/
 scripts/old/
+experiments_record.csv
