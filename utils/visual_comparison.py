@@ -9,6 +9,19 @@ from PIL import Image, ImageDraw
 from collections import OrderedDict
 
 
+SERIAL_NUMBERS = {
+    'abc': tuple(chr(i) for i in range(97, 123)),
+    'ABC': tuple(chr(i) for i in range(65, 91)),
+    '123': tuple(i for i in range(1, 27))
+}
+
+DEFAULT_TITLE_CFG = {
+    'fontfamily': 'serif',
+    'verticalalignment': 'top',
+    'y': -0.1
+}
+
+
 def save_fig(fig, save_folder=None, save_fmt='png',
              save_name='comparison', clear_after_save=True):
     if os.path.exists(save_folder):
@@ -19,11 +32,10 @@ def save_fig(fig, save_folder=None, save_fmt='png',
 def gen_comparison(
         img_name_list,
         img_dirs,
-        font_cfg=None,
+        title_cfg=DEFAULT_TITLE_CFG,
         expected_size=(256, 256),
-        title_y=-1.0,
-        w_pad=None,
-        h_pad=None):
+        auto_nb='abc',
+        tight_layout_cfg=dict):
     num_rows = len(img_name_list)
     num_cols = len(img_dirs)
 
@@ -47,21 +59,24 @@ def gen_comparison(
             ax = axes[i, j]
             ax.axis('off')
             if i == num_rows-1:
-                ax.set_title(label, fontdict=font_cfg, y=title_y)
+                if SERIAL_NUMBERS.get(auto_nb, None):
+                    label = f'({SERIAL_NUMBERS[auto_nb][j]}) {label}'
+                ax.set_title(label, **title_cfg)
             ax.imshow(img)
-    fig.tight_layout(w_pad=w_pad, h_pad=h_pad)
+    fig.tight_layout(**tight_layout_cfg)
     return fig
 
 
 def gen_comparison2(
         img_name,
         img_dirs,
-        font_cfg=None,
+        title_cfg=DEFAULT_TITLE_CFG,
         n_row=None,
         expected_size=(256, 256),
-        title_y=-0.2):
+        auto_nb='abc',
+        tight_layout_cfg=dict()):
     num = len(img_dirs)
-    if n_row:
+    if isinstance(n_row, int):
         num_rows = n_row
     else:
         num_rows = math.floor(math.sqrt(num))
@@ -84,20 +99,27 @@ def gen_comparison2(
                 img = img.resize(expected_size)
             img = np.asarray(img, dtype=np.uint8)
             ax = axes[i]
-            ax.set_title(label, fontdict=font_cfg, y=title_y)
+            if SERIAL_NUMBERS.get(auto_nb, None):
+                label = f'({SERIAL_NUMBERS[auto_nb][i]}) {label}'
+            ax.set_title(label, **title_cfg)
             ax.imshow(img)
-    fig.tight_layout()
+    fig.tight_layout(**tight_layout_cfg)
     return fig
+
 
 def gen_comparison3(
         img_name_list,
         img_dirs,
-        font_cfg=None,
+        title_cfg=None,
         expected_size=(256, 256),
-        title_x=-0.1,
-        title_y=0.5,
-        w_pad=None,
-        h_pad=None):
+        auto_nb='abc',
+        tight_layout_cfg=dict()):
+    if title_cfg is None:
+        title_cfg = {
+            'fontfamily': 'serif',
+            'x': -0.1
+        }
+
     num_rows = len(img_dirs)
     num_cols = len(img_name_list)
 
@@ -121,9 +143,12 @@ def gen_comparison3(
             ax = axes[i, j]
             ax.axis('off')
             if j == 0:
-                ax.set_title(label, fontdict=font_cfg, va='center', ha='center', rotation='vertical', x=title_x, y=title_y)
+                if SERIAL_NUMBERS.get(auto_nb, None):
+                    label = f'({SERIAL_NUMBERS[auto_nb][i]}) {label}'
+                ax.set_title(label, va='center', ha='center', rotation='vertical',
+                    **title_cfg)
             ax.imshow(img)
-    fig.tight_layout(w_pad=w_pad, h_pad=h_pad)
+    fig.tight_layout(**tight_layout_cfg)
     return fig
 
 
@@ -131,11 +156,12 @@ def gen_comparison_with_local_mag(
         img_name_list,
         local_areas,
         img_dirs,
-        font_cfg=None,
+        title_cfg=DEFAULT_TITLE_CFG,
         expected_size=(256, 256),
-        title_y=-0.2,
+        auto_nb='abc',
         outline_color=(255,255,0),
-        outline_width=3):
+        outline_width=3,
+        tight_layout_cfg=dict()):
     num_rows = len(img_name_list)
     num_cols = len(img_dirs)
 
@@ -167,9 +193,11 @@ def gen_comparison_with_local_mag(
             ax = axes[i, j]
             ax.axis('off')
             if i == num_rows-1:
-                ax.set_title(label, fontdict=font_cfg, y=title_y)
+                if SERIAL_NUMBERS.get(auto_nb, None):
+                    label = f'({SERIAL_NUMBERS[auto_nb][j]}) {label}'
+                ax.set_title(label, **title_cfg)
             ax.imshow(full_img)
-    fig.tight_layout()
+    fig.tight_layout(**tight_layout_cfg)
     return fig
 
 
@@ -177,11 +205,12 @@ def gen_comparison_with_local_mag2(
         img_name,
         local_area,
         img_dirs,
-        font_cfg=None,
+        title_cfg=DEFAULT_TITLE_CFG,
         expected_size=(256, 256),
-        title_y=-0.2,
+        auto_nb='abc',
         outline_color=(255,255,0),
-        outline_width=3):
+        outline_width=3,
+        tight_layout_cfg=dict()):
     num = len(img_dirs)
     num_rows = math.floor(math.sqrt(num))
     num_cols = math.ceil(num/num_rows)
@@ -210,9 +239,11 @@ def gen_comparison_with_local_mag2(
             local_mag = np.asarray(local_mag, dtype=np.uint8)
             full_img = np.concatenate((img, local_mag), 1)
             ax = axes[i]
-            ax.set_title(label, fontdict=font_cfg, y=title_y)
+            if SERIAL_NUMBERS.get(auto_nb, None):
+                label = f'({SERIAL_NUMBERS[auto_nb][i]}) {label}'
+            ax.set_title(label, **title_cfg)
             ax.imshow(full_img)
-    fig.tight_layout()
+    fig.tight_layout(**tight_layout_cfg)
     return fig
 
 
@@ -220,11 +251,12 @@ def gen_comparison_with_local_mag3(
         img_name_list,
         local_areas,
         img_dirs,
-        font_cfg=None,
+        title_cfg=DEFAULT_TITLE_CFG,
+        auto_nb='abc',
         expected_size=(256, 256),
-        title_y=-0.2,
         outline_color=(255,255,0),
-        outline_width=3):
+        outline_width=3,
+        tight_layout_cfg=dict()):
     num_rows = len(img_name_list)
     num_cols = len(img_dirs)
 
@@ -259,9 +291,11 @@ def gen_comparison_with_local_mag3(
             ax = axes[i, j]
             ax.axis('off')
             if i == num_rows-1:
-                ax.set_title(label, fontdict=font_cfg, y=title_y)
+                if SERIAL_NUMBERS.get(auto_nb, None):
+                    label = f'({SERIAL_NUMBERS[auto_nb][j]}) {label}'
+                ax.set_title(label, **title_cfg)
             ax.imshow(img)
-    fig.tight_layout()
+    fig.tight_layout(**tight_layout_cfg)
     return fig
 
 
@@ -269,11 +303,12 @@ def gen_comparison_with_local_edges(
         img_name_list,
         local_areas,
         img_dirs,
-        font_cfg=None,
+        title_cfg=DEFAULT_TITLE_CFG,
         expected_size=(256, 256),
-        title_y=-0.2,
+        auto_nb='abc',
         outline_color=(255,255,0),
-        outline_width=3):
+        outline_width=3,
+        tight_layout_cfg=dict()):
     num_rows = len(img_name_list)
     num_cols = len(img_dirs)
 
@@ -307,9 +342,11 @@ def gen_comparison_with_local_edges(
             ax = axes[i, j]
             ax.axis('off')
             if i == num_rows-1:
-                ax.set_title(label, fontdict=font_cfg, y=title_y)
+                if SERIAL_NUMBERS.get(auto_nb, None):
+                    label = f'({SERIAL_NUMBERS[auto_nb][j]}) {label}'
+                ax.set_title(label, **title_cfg)
             ax.imshow(full_img)
-    fig.tight_layout()
+    fig.tight_layout(**tight_layout_cfg)
     return fig
 
 
@@ -317,11 +354,12 @@ def gen_comparison_with_local_edges2(
         img_name_list,
         local_areas,
         img_dirs,
-        font_cfg=None,
+        title_cfg=DEFAULT_TITLE_CFG,
         expected_size=(256, 256),
+        auto_nb='abc',
         outline_color=(255,255,0),
-        title_y=-0.2,
-        outline_width=3):
+        outline_width=3,
+        tight_layout_cfg=dict()):
     num_rows = len(img_name_list)
     num_cols = len(img_dirs)
 
@@ -359,9 +397,11 @@ def gen_comparison_with_local_edges2(
             ax = axes[i, j]
             ax.axis('off')
             if i == num_rows-1:
-                ax.set_title(label, fontdict=font_cfg, y=title_y)
+                if SERIAL_NUMBERS.get(auto_nb, None):
+                    label = f'({SERIAL_NUMBERS[auto_nb][j]}) {label}'
+                ax.set_title(label, **title_cfg)
             ax.imshow(full_img)
-    fig.tight_layout()
+    fig.tight_layout(**tight_layout_cfg)
     return fig
 
 
