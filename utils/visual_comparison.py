@@ -35,7 +35,7 @@ def gen_comparison(
         title_cfg=DEFAULT_TITLE_CFG,
         expected_size=(256, 256),
         auto_nb='abc',
-        tight_layout_cfg=dict):
+        tight_layout_cfg=dict()):
     num_rows = len(img_name_list)
     num_cols = len(img_dirs)
 
