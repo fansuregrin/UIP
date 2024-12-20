@@ -11,16 +11,3 @@ test:
         width: 256
         height: 256
       - name: 'to_tensor'
-waternet_test:
-  type: 'waternet'
-  root_dir: '/DataA/pwz/workshop/Datasets/UIEB100'
-  inp_dir: 'raw'
-  ref_dir: 'reference'
-  trans_opt:
-    additional_targets:
-      ref: image
-    transforms:
-      - name: 'resize'
-        width: 256
-        height: 256
-      - name: 'to_tensor'

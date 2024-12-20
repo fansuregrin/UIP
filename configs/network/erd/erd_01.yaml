@@ -1,0 +1,22 @@
+# full model
+name: erd
+input_nc: 3
+output_nc: 3
+n_blocks_res: 15
+n_down: 2
+input_h: 256
+input_w: 256
+ngf: 64
+n_swinT: 3
+wrpm_kernel_size: 7
+wrpm_padding_size: 3
+ftm_kernel_size: 7
+ftm_padding_size: 3
+padding_type: reflect
+use_dropout: false
+use_ca: true
+use_sa: true
+use_swinT: true
+use_res: true
+norm_layer: 'instance_norm'
+fused_window_process: true

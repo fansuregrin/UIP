@@ -1,5 +1,5 @@
 test:
-  type: 'paired_img'
+  type: 'waternet'
   root_dir: '/DataA/pwz/workshop/Datasets/EUVP_Dataset/test_samples'
   inp_dir: 'Inp'
   ref_dir: 'GTr'

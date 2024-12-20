@@ -1,8 +1,8 @@
 test:
-  type: 'paired_img'
-  root_dir: '/DataA/pwz/workshop/Datasets/EUVP_Dataset/test_samples'
-  inp_dir: 'Inp'
-  ref_dir: 'GTr'
+  type: 'waternet'
+  root_dir: '/DataA/pwz/workshop/Datasets/ocean_ex'
+  inp_dir: 'poor'
+  ref_dir: 'good'
   trans_opt:
     additional_targets:
       ref: image
