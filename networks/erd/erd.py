@@ -6,6 +6,68 @@ from .resnet import ResnetBlock
 from utils import get_norm_layer
 
 
+class ConvBlock(nn.Module):
+    def __init__(self,
+            dim,
+            padding_type,
+            norm_layer,
+            use_dropout,
+            use_bias):
+        super().__init__()
+        self.conv_block = self.build_conv_block(dim, padding_type, norm_layer,
+            use_dropout, use_bias)
+
+    def build_conv_block(self, dim, padding_type, norm_layer, use_dropout, use_bias):
+        """Construct a convolutional block.
+
+        Parameters:
+            dim (int)           -- the number of channels in the conv layer.
+            padding_type (str)  -- the name of padding layer: reflect | replicate | zero
+            norm_layer          -- normalization layer
+            use_dropout (bool)  -- if use dropout layers.
+            use_bias (bool)     -- if the conv layer uses bias or not
+
+        Returns a conv block (with a conv layer, a normalization layer, 
+        and a non-linearity layer (ReLU))
+        """
+        conv_block = []
+        p = 0
+        if padding_type == 'reflect':
+            conv_block += [nn.ReflectionPad2d(1)]
+        elif padding_type == 'replicate':
+            conv_block += [nn.ReplicationPad2d(1)]
+        elif padding_type == 'zero':
+            p = 1
+        else:
+            raise NotImplementedError('padding [%s] is not implemented' % padding_type)
+
+        conv_block += [
+            nn.Conv2d(dim, dim, kernel_size=3, padding=p, bias=use_bias),
+            norm_layer(dim),
+            nn.ReLU(True)]
+        if use_dropout:
+            conv_block += [nn.Dropout(0.5)]
+
+        p = 0
+        if padding_type == 'reflect':
+            conv_block += [nn.ReflectionPad2d(1)]
+        elif padding_type == 'replicate':
+            conv_block += [nn.ReplicationPad2d(1)]
+        elif padding_type == 'zero':
+            p = 1
+        else:
+            raise NotImplementedError('padding [%s] is not implemented' % padding_type)
+        
+        conv_block += [
+            nn.Conv2d(dim, dim, kernel_size=3, padding=p, bias=use_bias),
+            norm_layer(dim)]
+
+        return nn.Sequential(*conv_block)
+
+    def forward(self, x):
+        return self.conv_block(x)
+
+
 class AttDownBlock(nn.Module):
     """Attention Down-sampling Block."""
     def __init__(self,
@@ -15,7 +77,8 @@ class AttDownBlock(nn.Module):
                  n_swinT = 1,
                  norm_layer=None,
                  use_ca=True,
-                 use_sa_swinT=True,
+                 use_sa=True,
+                 use_swinT=True,
                  use_dropout=False,
                  dropout_rate=0.5,
                  fused_window_process=False):
@@ -37,7 +100,8 @@ class AttDownBlock(nn.Module):
         use_bias = False if norm_layer else True
         self.swinT_resolution = swinT_resolution
         self.use_ca = use_ca
-        self.use_sa_swinT = use_sa_swinT
+        self.use_sa = use_sa
+        self.use_swinT = use_swinT
         conv_down = [nn.Conv2d(in_channels, out_channels, 4, 2, 1, bias=use_bias)]
         if norm_layer:
             conv_down.append(norm_layer(out_channels))
@@ -47,8 +111,9 @@ class AttDownBlock(nn.Module):
         self.conv_down = nn.Sequential(*conv_down)
         if use_ca:
             self.ca = ChannelAttention(out_channels)
-        if use_sa_swinT:
+        if use_sa:
             self.sa = SpatialAttention()
+        if use_swinT:
             swinT_list = [
                 SwinTransformerBlock(out_channels, swinT_resolution, 4, 2,
                                     fused_window_process=fused_window_process) 
@@ -60,8 +125,9 @@ class AttDownBlock(nn.Module):
         out = self.conv_down(x)
         if self.use_ca:
             out = self.ca(out) * out
-        if self.use_sa_swinT:
+        if self.use_sa:
             out = self.sa(out) * out
+        if self.use_swinT:
             # alternative for `out = rearrange(out, 'n c h w -> n (h w) c')`
             out = out.permute(0, 2, 3, 1).reshape(out.size(0), -1, out.size(1))
             out = self.swinTs(out)
@@ -90,7 +156,8 @@ class ERD(nn.Module):
                  padding_type: str = 'reflect',
                  use_dropout: bool = False,
                  use_ca: bool = True,
-                 use_sa_swinT: bool = True,
+                 use_sa: bool = True,
+                 use_swinT: bool = True,
                  norm_layer: str = 'instance_norm',
                  fused_window_process: bool = False,
                  **kwargs):
@@ -121,6 +188,8 @@ class ERD(nn.Module):
         norm_layer = get_norm_layer(norm_layer)
         use_bias = (norm_layer is None)
 
+        self.use_res = kwargs.get('use_res', True)
+
         # Wide-range Perception Module (WRPM)
         self.wrpm = self._create_wrpm(input_nc, ngf, wrpm_kernel_size, norm_layer=norm_layer,
                                       padding_layer=nn.ReflectionPad2d, padding_size=wrpm_padding_size)
@@ -132,7 +201,8 @@ class ERD(nn.Module):
             dm.append(
                 AttDownBlock(ngf*mult, ngf*mult*2, (input_h//mult//2, input_w//mult//2),
                              n_swinT=n_swinT, norm_layer=norm_layer,
-                             use_ca=use_ca, use_sa_swinT=use_sa_swinT, use_dropout=use_dropout,
+                             use_ca=use_ca, use_sa=use_sa, use_swinT=use_swinT,
+                             use_dropout=use_dropout,
                              fused_window_process=fused_window_process)
             )
         self.dm = nn.Sequential(*dm)
@@ -141,9 +211,13 @@ class ERD(nn.Module):
         blocks = []
         mult = 2 ** n_down
         for i in range(n_blocks_res):
-            blocks.append(
-                ResnetBlock(ngf * mult, padding_type=padding_type, norm_layer=norm_layer,
-                            use_dropout=use_dropout, use_bias=use_bias))
+            if self.use_res:
+                blocks.append(
+                    ResnetBlock(ngf * mult, padding_type=padding_type, 
+                        norm_layer=norm_layer, use_dropout=use_dropout, use_bias=use_bias))
+            else:
+                blocks.append(ConvBlock(ngf *mult, padding_type, norm_layer,
+                    use_dropout, use_bias))
         self.rfrm = nn.Sequential(*blocks)
         
         # Up-sampling
