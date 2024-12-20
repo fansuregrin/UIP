@@ -96,9 +96,6 @@ class WaterNet(nn.Module):
         self.wb_refiner = Refiner()
         self.he_refiner = Refiner()
         self.gc_refiner = Refiner()
-        self.use_final_sigmoid = kwargs.get('use_final_sigmoid', False)
-        if self.use_final_sigmoid:
-            self.output = nn.Sigmoid()
 
     def forward(self, x, wb, he, gc):
         wb_cm, he_cm, gc_cm = self.cmg(x, wb, he, gc)
@@ -108,6 +105,7 @@ class WaterNet(nn.Module):
         out = torch.mul(refined_wb, wb_cm)\
             + torch.mul(refined_he, he_cm)\
             + torch.mul(refined_gc, gc_cm)
-        if self.use_final_sigmoid:
-            out = self.output(out)
+        
+        out = (out - out.min()) / (out.max() - out.min())
+
         return out

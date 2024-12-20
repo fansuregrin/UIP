@@ -11,7 +11,6 @@ from torchvision.utils import save_image
 from losses import SemanticContentLoss as PerceptrualLoss
 from models.img_enhance_model import ImgEnhanceModel
 from models import _models
-from utils import seed_everything
 
 
 @_models.register('waternet')
@@ -59,62 +58,6 @@ class WaterNetModel(ImgEnhanceModel):
             full_img = self._gen_comparison_img(inp_imgs, pred_imgs, ref_imgs)
             full_img = cv2.cvtColor(full_img, cv2.COLOR_RGB2BGR)
             cv2.imwrite(os.path.join(self.sample_dir, f'{iteration:06d}.png'), full_img)
-
-    def train(self):
-        assert self.mode == 'train', f"The mode must be 'train', but got {self.mode}"
-        
-        seed_everything(self.seed)
-
-        if not self.logger is None:
-            self.logger.info(f"Starting Training Process...")
-            for k, v in self.cfg.items():
-                self.logger.info(f"{k}: {v}")
-            self.logger.info("network config details:")
-            for k, v in self.net_cfg.items():
-                self.logger.info(f"  {k}: {v}")
-            self.logger.info("lr_scheduler config details:")
-            for k, v in self.lr_scheduler_cfg.items():
-                self.logger.info(f"  {k}: {v}")
-        
-        if self.start_epoch > 0:
-            load_prefix = self.cfg.get('load_prefix', None)
-            if load_prefix:
-                state_name = f'{load_prefix}_{self.start_epoch-1}.pth'
-                self.load_network_state(state_name)
-                self.load_optimizer_state(state_name)
-                self.load_lr_scheduler_state(state_name)
-            else:
-                state_name = f'{self.start_epoch-1}.pth'
-                self.load_network_state(state_name)
-                self.load_optimizer_state(state_name)
-                self.load_lr_scheduler_state(state_name)
-        iteration_index = self.start_iteration
-        for epoch in range(self.start_epoch, self.start_epoch + self.num_epochs):
-            for i, batch in enumerate(self.train_dl):
-                # train one batch
-                self.train_one_batch(batch)
-                
-                # validation
-                if (iteration_index % self.val_interval == 0) or (i == len(self.train_dl)-1):
-                    val_batch = next(iter(self.val_dl))
-                    self.validate_one_batch(val_batch, iteration_index)
-                    self.write_tensorboard(iteration_index)
-
-                    self.logger.info(
-                        "[iteration: {:d}, lr: {:f}] [Epoch {:d}/{:d}, batch {:d}/{:d}] "
-                        "[train_loss: {:.3f}, val_loss: {:.3f}]".format(
-                            iteration_index, self.optimizer.param_groups[0]['lr'],
-                            epoch, self.start_epoch + self.num_epochs-1, i, len(self.train_dl)-1,
-                            self.train_loss['total'].item(), self.val_loss['total'].item()
-                    ))
-                iteration_index += 1
-            # adjust lr
-            self.adjust_lr()
-            # save model weights
-            if (epoch % self.ckpt_interval == 0) or (epoch == self.start_epoch + self.num_epochs-1):
-                self.save_network_weights(epoch)
-                self.save_optimizer_state(epoch)
-                self.save_lr_scheduler_state(epoch)
 
     def test_one_epoch(self, epoch: int, test_name: str, load_prefix=None):
         assert self.mode == 'test', f"The mode must be 'test', but got {self.mode}"
