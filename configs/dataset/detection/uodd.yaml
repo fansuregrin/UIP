@@ -1,0 +1,12 @@
+train:
+  type: 'cocofmt'
+  root_dir: '/DataA/pwz/workshop/Datasets/UODD/images/train'
+  ann_fp: '/DataA/pwz/workshop/Datasets/UODD/annotations/coco/instances_train.json'
+val:
+  type: 'cocofmt'
+  root_dir: '/DataA/pwz/workshop/Datasets/UODD/images/val'
+  ann_fp: '/DataA/pwz/workshop/Datasets/UODD/annotations/coco/instances_val.json'
+test:
+  type: 'cocofmt'
+  root_dir: '/DataA/pwz/workshop/Datasets/UODD/images/test'
+  ann_fp: '/DataA/pwz/workshop/Datasets/UODD/annotations/coco/instances_test.json'
