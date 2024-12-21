@@ -1,3 +1,4 @@
 name: fcn
 num_classes: 8
 backbone: resnet50
+use_pretrained: true
