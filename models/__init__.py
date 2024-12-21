@@ -13,7 +13,8 @@ from models import (
     seg_model,
     waternet_model,
     ugan_model,
-    utuie_model
+    utuie_model,
+    detection_model
 )
 
 __all__ = ['create_model', ]
