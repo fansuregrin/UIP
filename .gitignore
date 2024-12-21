@@ -11,3 +11,4 @@ test/*.ipynb
 zips/
 scripts/old/
 experiments_record.csv
+datasets
