@@ -185,17 +185,22 @@ class SegModel(BaseModel):
                 state_path
             ))
 
+    def _log_cfg_details(self):
+        if self.logger is None: return
+
+        for k, v in self.cfg.items():
+            self.logger.info(f"{k}: {v}")
+        self.logger.info("network config details:")
+        for k, v in self.net_cfg.items():
+            self.logger.info(f"  {k}: {v}")
+
     def train(self):
         assert self.mode == 'train', f"The mode must be 'train', but got {self.mode}"
+        
         seed_everything(self.seed)
-
         if not self.logger is None:
             self.logger.info(f"Starting Training Process...")
-            for k, v in self.cfg.items():
-                self.logger.info(f"{k}: {v}")
-            self.logger.info("network config details:")
-            for k, v in self.net_cfg.items():
-                self.logger.info(f"  {k}: {v}")
+            self._log_cfg_details()
             self.logger.info("lr_scheduler config details:")
             for k, v in self.lr_scheduler_cfg.items():
                 self.logger.info(f"  {k}: {v}")
@@ -343,12 +348,8 @@ class SegModel(BaseModel):
     
     def test(self):
         if not self.logger is None:
-            self.logger.info(f"Starting Training Process...")
-            for k, v in self.cfg.items():
-                self.logger.info(f"{k}: {v}")
-            self.logger.info("network config details:")
-            for k, v in self.net_cfg.items():
-                self.logger.info(f"  {k}: {v}")
+            self.logger.info(f"Starting Test Process...")
+            self._log_cfg_details()
         
         for epoch in self.epochs:
             self.test_one_epoch(epoch, self.test_name, self.load_prefix)
@@ -364,17 +365,12 @@ class SegModel(BaseModel):
         os.makedirs(result_dir)
         os.makedirs(os.path.join(result_dir, 'paired'))
 
-        columns = ['img_name', 'time', 'mIoU']
-        columns += [f"mIoU_{cls['symbol']}" for cls in self.classes]
-        record = pd.DataFrame(columns=columns)
-
         stream_metrics = StreamSegMetrics(len(self.classes))
         batch_idx = 1
+        total_time = 0.0
         for batch in tqdm(self.test_dl):
             inp_imgs = batch['img'].to(self.device)
             ref_masks = batch['mask'].to(self.device) if 'mask' in batch else None
-            img_names = batch['img_name']
-            batch_size = len(inp_imgs)
             
             with torch.no_grad():
                 self.network.eval()
@@ -382,24 +378,11 @@ class SegModel(BaseModel):
                 pred_masks = self.network(inp_imgs)
                 # consumed time
                 t_elapse = (time.time() - t_start)
+                total_time += (t_elapse / len(inp_imgs))
             
             if not ref_masks is None:
                 stream_metrics.update(ref_masks.cpu().numpy(),
                     pred_masks.softmax(1).argmax(1).cpu().numpy())
-
-            if not ref_masks is None:
-                mIoU = mean_iou(pred_masks.softmax(1).argmax(1),
-                    ref_masks, len(self.classes), input_format='index')
-                mIoU_per_class = mean_iou(pred_masks.softmax(1).argmax(1), ref_masks,
-                    len(self.classes), per_class=True, input_format='index')
-            
-            for i in range(batch_size):
-                img_name = img_names[i]
-                row = {'img_name': img_name, 'time': t_elapse/batch_size}
-                row['mIoU'] = mIoU[i].cpu().item()
-                for cls in self.classes:
-                    row[f"mIoU_{cls['symbol']}"] = mIoU_per_class[i][cls['id']].cpu().item()
-                record.loc[len(record)] = row
 
             # visualized results
             full_img = self._gen_comparison_img(inp_imgs, pred_masks, ref_masks)
@@ -407,11 +390,8 @@ class SegModel(BaseModel):
             cv2.imwrite(os.path.join(result_dir, 'paired', f'{batch_idx:06d}.png'), full_img)
             batch_idx += 1
 
-        record.loc[len(record)] = record.select_dtypes(include='number').mean()
-        record.loc[len(record)-1, 'img_name'] = 'average'
-        record.to_csv(os.path.join(result_dir, 'record.csv'), index=False)
-
         stream_metrics = stream_metrics.get_results()
+        stream_metrics['fps'] = total_time / len(self.test_dl)
         with open(os.path.join(result_dir, 'stream_metrics.yaml'), 'w') as f:
             yaml.dump(stream_metrics, f)
 
@@ -437,10 +417,6 @@ class SegModel(BaseModel):
                 img_with_pred_mask = draw_segmentation_masks(img, boolean_pred_mask, alpha=0.5, colors=colors)
                 imgs_with_pred_mask.append(img_with_pred_mask.cpu().numpy().transpose(1,2,0))
 
-                # normalized_ref_mask = F.softmax(ref_mask, dim=0)
-                # boolean_ref_mask = torch.stack(
-                #     [(normalized_ref_mask.argmax(0) == i) for i in range(len(self.classes))]
-                # )
                 boolean_ref_mask = torch.stack([ref_mask == i for i in range(len(self.classes))])
                 img_with_ref_mask = draw_segmentation_masks(img, boolean_ref_mask, alpha=0.5, colors=colors)
                 imgs_with_ref_mask.append(img_with_ref_mask.cpu().numpy().transpose(1,2,0))
