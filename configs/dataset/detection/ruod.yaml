@@ -1,0 +1,12 @@
+train:
+  type: 'cocofmt'
+  root_dir: '/DataA/pwz/workshop/Datasets/RUOD/RUOD_pic/train'
+  ann_fp: '/DataA/pwz/workshop/Datasets/RUOD/RUOD_ANN/instances_train.json'
+val:
+  type: 'cocofmt'
+  root_dir: '/DataA/pwz/workshop/Datasets/RUOD/RUOD_pic/test'
+  ann_fp: '/DataA/pwz/workshop/Datasets/RUOD/RUOD_ANN/instances_test.json'
+test:
+  type: 'cocofmt'
+  root_dir: '/DataA/pwz/workshop/Datasets/RUOD/RUOD_pic/test'
+  ann_fp: '/DataA/pwz/workshop/Datasets/RUOD/RUOD_ANN/instances_test.json'

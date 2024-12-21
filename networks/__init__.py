@@ -40,7 +40,8 @@ from networks import (
     fcn,
     deeplabv3,
     unet,
-    segnet
+    segnet,
+    faster_rcnn
 )
 
 def create_network(cfg: Dict[str, Any]) -> nn.Module | Dict[str, nn.Module]:

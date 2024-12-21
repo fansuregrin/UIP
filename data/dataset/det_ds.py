@@ -43,7 +43,7 @@ class CocoFmtDataset(Dataset):
         # area
         area = torch.tensor([i['area'] for i in coco_target])
         # iscrowd
-        iscrowd = torch.tensor([i['iscrow'] for i in coco_target])
+        iscrowd = torch.tensor([i['iscrowd'] for i in coco_target])
 
         target = {}
         target["boxes"] = boxes 

@@ -8,7 +8,7 @@ from torchvision.models.detection.faster_rcnn import (
 
 class FasterRCNN(nn.Module):
     def __init__(self, version, num_classes, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super().__init__()
         if version == 'fasterrcnn_resnet50_fpn_v2':
             self.faster_rcnn = fasterrcnn_resnet50_fpn_v2()
         elif version == 'fasterrcnn_mobilenet_v3_large_fpn':
