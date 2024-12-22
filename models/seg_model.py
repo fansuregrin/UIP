@@ -4,9 +4,9 @@ import random
 import shutil
 import sys
 from typing import Dict
+from argparse import ArgumentParser
 
 import yaml
-import pandas as pd
 import torch
 import torch.optim as optim
 import torch.nn as nn
@@ -82,14 +82,22 @@ class SegModel(BaseModel):
             self.load_prefix = self.cfg['load_prefix']
 
     def _set_optimizer(self):
-        params = self.network.parameters()
+        if self.cfg.get('freeze_backbone', False):
+            params = []
+            for name,param in self.network.named_parameters():
+                if 'backbone' not in name:
+                    params.append(param)
+        else:
+            params = self.network.parameters()
         optimizer = self.cfg['optimizer']
         if optimizer == 'adam':
             self.optimizer = torch.optim.Adam(
-                params, lr=self.cfg['lr'], weight_decay=self.cfg['weight_decay'])
+                params, lr=self.cfg['lr'], betas=self.cfg['betas'],
+                weight_decay=self.cfg['weight_decay'])
         elif optimizer == 'sgd':
             self.optimizer = torch.optim.SGD(
-                params, lr=self.cfg['lr'], weight_decay=self.cfg['weight_decay'])
+                params, lr=self.cfg['lr'], momentum=self.cfg['momentum'],
+                weight_decay=self.cfg['weight_decay'])
         else:
             assert f"<{optimizer}> is supported!"
 
@@ -364,6 +372,7 @@ class SegModel(BaseModel):
             shutil.rmtree(result_dir)
         os.makedirs(result_dir)
         os.makedirs(os.path.join(result_dir, 'paired'))
+        os.makedirs(os.path.join(result_dir, 'single/predicted'))
 
         stream_metrics = StreamSegMetrics(len(self.classes))
         batch_idx = 1
@@ -384,14 +393,22 @@ class SegModel(BaseModel):
                 stream_metrics.update(ref_masks.cpu().numpy(),
                     pred_masks.softmax(1).argmax(1).cpu().numpy())
 
+            # save predicted masks
+            img_names = batch['img_name']
+            for pred_mask,img_name in zip(pred_masks, img_names):
+                pred_mask = pred_mask.softmax(0).argmax(0).detach().cpu().numpy()
+                img_name = os.path.splitext(img_name)[0] + '.png'
+                cv2.imwrite(os.path.join(result_dir, 'single/predicted', img_name), pred_mask)
+            
             # visualized results
             full_img = self._gen_comparison_img(inp_imgs, pred_masks, ref_masks)
             full_img = cv2.cvtColor(full_img, cv2.COLOR_RGB2BGR)
             cv2.imwrite(os.path.join(result_dir, 'paired', f'{batch_idx:06d}.png'), full_img)
+
             batch_idx += 1
 
         stream_metrics = stream_metrics.get_results()
-        stream_metrics['fps'] = total_time / len(self.test_dl)
+        stream_metrics['fps'] = len(self.test_dl) / total_time
         with open(os.path.join(result_dir, 'stream_metrics.yaml'), 'w') as f:
             yaml.dump(stream_metrics, f)
 
@@ -401,6 +418,7 @@ class SegModel(BaseModel):
             self.logger.info(f'saved result into [{result_dir}]')
     
     def _gen_comparison_img(self, imgs: Tensor, pred_masks: Tensor, ref_masks = None):
+        mask_alpha = self.cfg.get('mask_alpha', 0.5)
         colors = ['#'+clz['color'] for clz in self.classes]
         imgs_with_pred_mask = []
         imgs_with_ref_mask = []
@@ -414,11 +432,13 @@ class SegModel(BaseModel):
                 boolean_pred_mask = torch.stack(
                     [(normalized_pred_mask.argmax(0) == i) for i in range(len(self.classes))]
                 )
-                img_with_pred_mask = draw_segmentation_masks(img, boolean_pred_mask, alpha=0.5, colors=colors)
+                img_with_pred_mask = draw_segmentation_masks(img, boolean_pred_mask,
+                    alpha=mask_alpha, colors=colors)
                 imgs_with_pred_mask.append(img_with_pred_mask.cpu().numpy().transpose(1,2,0))
 
                 boolean_ref_mask = torch.stack([ref_mask == i for i in range(len(self.classes))])
-                img_with_ref_mask = draw_segmentation_masks(img, boolean_ref_mask, alpha=0.5, colors=colors)
+                img_with_ref_mask = draw_segmentation_masks(img, boolean_ref_mask,
+                    alpha=mask_alpha, colors=colors)
                 imgs_with_ref_mask.append(img_with_ref_mask.cpu().numpy().transpose(1,2,0))
             imgs_with_pred_mask = np.concatenate(imgs_with_pred_mask, axis=1)
             imgs_with_ref_mask = np.concatenate(imgs_with_ref_mask, axis=1)
@@ -430,15 +450,20 @@ class SegModel(BaseModel):
                 boolean_pred_mask = torch.stack(
                     [(normalized_pred_mask.argmax(0) == i) for i in range(len(self.classes))]
                 )
-                img_with_pred_mask = draw_segmentation_masks(img, boolean_pred_mask, alpha=0.5, colors=colors)
+                img_with_pred_mask = draw_segmentation_masks(img, boolean_pred_mask,
+                    alpha=mask_alpha, colors=colors)
                 imgs_with_pred_mask.append(img_with_pred_mask.cpu().numpy().transpose(1,2,0))
             imgs_with_pred_mask = np.concatenate(imgs_with_pred_mask, axis=1)
             full_img = img_with_pred_mask
         return full_img
     
     @staticmethod
-    def modify_args(parser, mode):
+    def modify_args(parser: ArgumentParser, mode: str):
+        parser.add_argument('--mask_alpha', type=float, default=0.5)
         if mode == 'train':
+            parser.add_argument('--freeze_backbone', action='store_true')
+            parser.add_argument('--betas', nargs=2, type=float, default=[0.9, 0.999])
+            parser.add_argument('--momentum', type=float, default=0.0)
             parser.add_argument('--weight_decay', type=float, default=0.0)
             parser.add_argument('--lambda_ce', type=float, default=1.0)
             parser.add_argument('--lambda_dice', type=float, default=1.0)
