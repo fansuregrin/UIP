@@ -1,5 +1,5 @@
 from networks import NetworkCreator, network_creators
-from .deeplab import DeepLabV3
+from .deeplabv3 import DeepLabV3
 
 __all__ = ['DeepLabV3']
 
