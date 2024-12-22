@@ -1,3 +1,4 @@
 name: 'faster_rcnn'
 version: 'fasterrcnn_resnet50_fpn_v2'
 num_classes: 11
+use_pretrained: true

@@ -1,0 +1,4 @@
+name: deeplabv3
+num_classes: 8
+backbone: resnet50
+use_pretrained: True
