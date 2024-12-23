@@ -10,4 +10,7 @@ class FCNCreator(NetworkCreator):
         super().__init__()
 
     def create_network(cfg):
+        backbone = cfg.get('backbone', None)
+        if backbone and backbone != 'resnet50' and backbone != 'resnet101':
+            cfg['use_pretrained'] = False
         return FCN(**cfg)
