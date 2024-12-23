@@ -43,7 +43,7 @@ train:
   type: 'seg'
   root_dir: '/DataA/pwz/workshop/Datasets/SUIM/train'
   image_dir: 'images'
-  mask_dir: 'annotations'
+  mask_dir: 'masks'
   trans_opt:
     additional_targets:
       mask: image
@@ -58,7 +58,7 @@ val:
   type: 'seg'
   root_dir: '/DataA/pwz/workshop/Datasets/SUIM/val'
   image_dir: 'images'
-  mask_dir: 'annotations'
+  mask_dir: 'masks'
   trans_opt:
     additional_targets:
       mask: image
@@ -73,7 +73,33 @@ test:
   type: 'seg'
   root_dir: '/DataA/pwz/workshop/Datasets/SUIM/test'
   image_dir: 'images'
-  mask_dir: 'annotations'
+  mask_dir: 'masks'
+  trans_opt:
+    additional_targets:
+      mask: image
+    transforms:
+      - name: 'resize'
+        width: 256
+        height: 256
+      - name: 'to_tensor'
+test_val:
+  type: 'seg'
+  root_dir: '/DataA/pwz/workshop/Datasets/SUIM/val'
+  image_dir: 'images'
+  mask_dir: 'masks'
+  trans_opt:
+    additional_targets:
+      mask: image
+    transforms:
+      - name: 'resize'
+        width: 256
+        height: 256
+      - name: 'to_tensor'
+test_train:
+  type: 'seg'
+  root_dir: '/DataA/pwz/workshop/Datasets/SUIM/train'
+  image_dir: 'images'
+  mask_dir: 'masks'
   trans_opt:
     additional_targets:
       mask: image

@@ -134,12 +134,15 @@ class SegModel(BaseModel):
         }
         self.classes = ds_cfg['classes']
         if self.mode == 'train':
-            train_ds = create_dataset(ds_cfg['train'])
-            val_ds = create_dataset(ds_cfg['val'])
+            _train_ds = self.cfg.get('train_ds', 'train')
+            train_ds = create_dataset(ds_cfg[_train_ds])
+            _val_ds = self.cfg.get('val_ds', 'val')
+            val_ds = create_dataset(ds_cfg[_val_ds])
             self.train_dl = create_dataloader(train_ds, dl_cfg)
             self.val_dl = create_dataloader(val_ds, dl_cfg)
         elif self.mode == 'test':
-            test_ds = create_dataset(ds_cfg['test'])
+            _test_ds = self.cfg.get('test_ds', 'test')
+            test_ds = create_dataset(ds_cfg[_test_ds])
             self.test_dl = create_dataloader(test_ds, dl_cfg)
         else:
             assert False,'invalid mode'
@@ -461,10 +464,14 @@ class SegModel(BaseModel):
     def modify_args(parser: ArgumentParser, mode: str):
         parser.add_argument('--mask_alpha', type=float, default=0.5)
         if mode == 'train':
+            parser.add_argument('--train_ds', type=str, default='train')
+            parser.add_argument('--val_ds', type=str, default='val')
             parser.add_argument('--freeze_backbone', action='store_true')
             parser.add_argument('--betas', nargs=2, type=float, default=[0.9, 0.999])
             parser.add_argument('--momentum', type=float, default=0.0)
             parser.add_argument('--weight_decay', type=float, default=0.0)
             parser.add_argument('--lambda_ce', type=float, default=1.0)
             parser.add_argument('--lambda_dice', type=float, default=1.0)
+        elif mode == 'test':
+            parser.add_argument('--test_ds', type=str, default='test')
         return parser

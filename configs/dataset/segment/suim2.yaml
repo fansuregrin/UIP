@@ -43,7 +43,7 @@ train:
   type: 'seg'
   root_dir: '/DataA/pwz/workshop/Datasets/SUIM2/train'
   image_dir: 'images'
-  mask_dir: 'annotations'
+  mask_dir: 'masks'
   trans_opt:
     additional_targets:
       mask: image
@@ -58,7 +58,7 @@ val:
   type: 'seg'
   root_dir: '/DataA/pwz/workshop/Datasets/SUIM2/val'
   image_dir: 'images'
-  mask_dir: 'annotations'
+  mask_dir: 'masks'
   trans_opt:
     additional_targets:
       mask: image
@@ -73,7 +73,7 @@ test:
   type: 'seg'
   root_dir: '/DataA/pwz/workshop/Datasets/SUIM2/test'
   image_dir: 'images'
-  mask_dir: 'annotations'
+  mask_dir: 'masks'
   trans_opt:
     additional_targets:
       mask: image
