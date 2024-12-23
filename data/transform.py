@@ -31,5 +31,6 @@ def get_transform(cfg: Dict | None = None):
         transform_list.append(TRANSFORMS_TBL[name](**args))
     transforms = A.Compose(
         transform_list,
-        additional_targets=cfg.get('additional_targets', None))
+        additional_targets=cfg.get('additional_targets', None),
+        is_check_shapes=False)
     return transforms
