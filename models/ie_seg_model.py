@@ -458,20 +458,20 @@ class IeSegModel(BaseModel):
             # save predicted masks
             img_names = batch['img_name']
             for pred_img,pred_mask,img_name in zip(pred_imgs, pred_masks, img_names):
-                pred_img = pred_img.detach().cpu().permute(1,2,0).numpy()
+                pred_img = pred_img.detach().cpu()
                 pred_mask = pred_mask.softmax(0).argmax(0).detach().cpu().numpy()
                 img_name_noext = os.path.splitext(img_name)[0]
                 img_name = img_name_noext + '.png'
                 mask_name = img_name_noext + '_mask.png'
+                save_image(pred_img, os.path.join(result_dir, 'single/predicted', img_name))
                 cv2.imwrite(os.path.join(result_dir, 'single/predicted', mask_name), pred_mask)
-                cv2.imwrite(os.path.join(result_dir, 'single/predicted', img_name), pred_img)
             
             masks = self._sample_masks(inp_imgs, pred_masks, ref_masks)
             masks = cv2.cvtColor(masks, cv2.COLOR_RGB2BGR)
             cv2.imwrite(os.path.join(result_dir, 'paired',
                 f'{batch_idx:06d}_masks.png'), masks)
             enh_imgs = self._sample_enhanced_imgs(inp_imgs, pred_imgs, ref_imgs)
-            enh_imgs = cv2.cvtColor(enh_imgs, cv2.COLOR_BGR2RGB)
+            enh_imgs = cv2.cvtColor(enh_imgs, cv2.COLOR_RGB2BGR)
             cv2.imwrite(os.path.join(result_dir, 'paired',
                 f'{batch_idx:06d}_enh.png'), enh_imgs)
 
