@@ -3,6 +3,7 @@ import time
 import sys
 import random
 import shutil
+from argparse import ArgumentParser
 
 import torch
 import torch.optim as optim
@@ -177,12 +178,15 @@ class ImgEnhanceModel(BaseModel):
             'drop_last': self.cfg.get('drop_last', False)
         }
         if self.mode == 'train':
-            train_ds = create_dataset(ds_cfg['train'])
-            val_ds = create_dataset(ds_cfg['val'])
+            _train_ds = self.cfg.get('train_ds', 'train')
+            train_ds = create_dataset(ds_cfg[_train_ds])
+            _val_ds = self.cfg.get('val_ds', 'val')
+            val_ds = create_dataset(ds_cfg[_val_ds])
             self.train_dl = create_dataloader(train_ds, dl_cfg)
             self.val_dl = create_dataloader(val_ds, dl_cfg)
         elif self.mode == 'test':
-            test_ds = create_dataset(ds_cfg['test'])
+            _test_ds = self.cfg.get('test_ds', 'test')
+            test_ds = create_dataset(ds_cfg[_test_ds])
             dl_cfg['shuffle'] = False
             self.test_dl = create_dataloader(test_ds, dl_cfg)
         else:
@@ -438,14 +442,19 @@ class ImgEnhanceModel(BaseModel):
         return full_img
     
     @staticmethod
-    def modify_args(parser, mode):
+    def modify_args(parser: ArgumentParser, mode):
         if mode == 'train':
+            parser.add_argument('--train_ds', type=str, default='train')
+            parser.add_argument('--val_ds', type=str, default='val')
             parser.add_argument('--lambda_mae', type=float, default=1.0, help='weight of MAE loss')
             parser.add_argument('--lambda_ssim', type=float, default=1.0, help='weight of SSIM loss')
             parser.add_argument('--lambda_psnr', type=float, default=1.0, help='weight of PSNR loss')
             parser.add_argument('--lambda_four', type=float, default=1.0, help='weight of FourDomain loss')
             parser.add_argument('--lambda_edge', type=float, default=1.0, help='weight of Edge loss')
             parser.add_argument('--l1_reduction', type=str, default='mean')
+        elif mode == 'test':
+            parser.add_argument('--test_ds', type=str, default='test')
+        
         return parser
 
 

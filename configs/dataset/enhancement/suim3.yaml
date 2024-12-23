@@ -1,0 +1,18 @@
+test:
+  type: 'single_img'
+  root_dir: '/DataA/pwz/workshop/Datasets/SUIM3/test/images'
+  trans_opt:
+    transforms:
+      - name: 'resize'
+        width: 256
+        height: 256
+      - name: 'to_tensor'
+test_train:
+  type: 'single_img'
+  root_dir: '/DataA/pwz/workshop/Datasets/SUIM3/train/images'
+  trans_opt:
+    transforms:
+      - name: 'resize'
+        width: 256
+        height: 256
+      - name: 'to_tensor'
