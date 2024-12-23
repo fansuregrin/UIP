@@ -464,14 +464,11 @@ class SegModel(BaseModel):
     def modify_args(parser: ArgumentParser, mode: str):
         parser.add_argument('--mask_alpha', type=float, default=0.5)
         if mode == 'train':
-            parser.add_argument('--train_ds', type=str, default='train')
-            parser.add_argument('--val_ds', type=str, default='val')
             parser.add_argument('--freeze_backbone', action='store_true')
             parser.add_argument('--betas', nargs=2, type=float, default=[0.9, 0.999])
             parser.add_argument('--momentum', type=float, default=0.0)
             parser.add_argument('--weight_decay', type=float, default=0.0)
             parser.add_argument('--lambda_ce', type=float, default=1.0)
             parser.add_argument('--lambda_dice', type=float, default=1.0)
-        elif mode == 'test':
-            parser.add_argument('--test_ds', type=str, default='test')
+
         return parser

@@ -22,6 +22,9 @@ class BaseArgParser:
         self.parser.add_argument('--shuffle', action='store_true', help='shuffle the data at each epoch')
         self.parser.add_argument('--num_workers', type=int, default=4, help='how many subprocesses to use for data loading')
         self.parser.add_argument('--drop_last', action='store_true', help='drop the last incomplete batch, if the dataset size is not divisible by the batch size')
+        self.parser.add_argument('--train_ds', type=str, default='train')
+        self.parser.add_argument('--val_ds', type=str, default='val')
+        self.parser.add_argument('--test_ds', type=str, default='test')
 
     def modify(self):
         args, _ = self.parser.parse_known_args()

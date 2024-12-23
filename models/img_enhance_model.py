@@ -444,16 +444,12 @@ class ImgEnhanceModel(BaseModel):
     @staticmethod
     def modify_args(parser: ArgumentParser, mode):
         if mode == 'train':
-            parser.add_argument('--train_ds', type=str, default='train')
-            parser.add_argument('--val_ds', type=str, default='val')
             parser.add_argument('--lambda_mae', type=float, default=1.0, help='weight of MAE loss')
             parser.add_argument('--lambda_ssim', type=float, default=1.0, help='weight of SSIM loss')
             parser.add_argument('--lambda_psnr', type=float, default=1.0, help='weight of PSNR loss')
             parser.add_argument('--lambda_four', type=float, default=1.0, help='weight of FourDomain loss')
             parser.add_argument('--lambda_edge', type=float, default=1.0, help='weight of Edge loss')
             parser.add_argument('--l1_reduction', type=str, default='mean')
-        elif mode == 'test':
-            parser.add_argument('--test_ds', type=str, default='test')
         
         return parser
 
