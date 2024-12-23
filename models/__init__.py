@@ -14,7 +14,8 @@ from models import (
     waternet_model,
     ugan_model,
     utuie_model,
-    detection_model
+    detection_model,
+    ie_seg_model
 )
 
 __all__ = ['create_model', ]
