@@ -1,6 +1,0 @@
-name: unet
-input_nc: 3
-output_nc: 4
-ngf: 32
-norm_layer: instance_norm
-use_dropout: false

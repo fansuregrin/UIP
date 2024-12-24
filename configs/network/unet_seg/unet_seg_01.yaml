@@ -1,6 +1,9 @@
 name: unet
 input_nc: 3
 output_nc: 8
-ngf: 32
+base_ch: 32
 norm_layer: instance_norm
-use_dropout: false
+use_dropout: true
+drop_rate: 0.5
+last_activ: relu
+last_activ_args:
