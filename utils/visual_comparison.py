@@ -426,7 +426,7 @@ def visualize_color_distribution(
     ref = Image.open(os.path.join(ref_dir, img_name)).convert('RGB')
     if ref.size != expected_size:
         ref = ref.resize(expected_size)
-    w_idx = ref.width // 2
+    if w_idx is None: w_idx = ref.width // 2
     ref = np.asarray(ref, dtype=np.float32) / 255.0
     r_vals_ref = ref[:, w_idx, 0]
 
