@@ -447,6 +447,7 @@ def visualize_color_distribution(
             img_ax.imshow(img)
             img_ax.axis('off')
             
+            chart_ax.set_ylim(0.0, 1.0)
             chart_ax.plot(r_vals_ref, label='Reference')
             chart_ax.plot(img_arr[:, w_idx, 0], label=label)
             chart_ax.axis('on')
