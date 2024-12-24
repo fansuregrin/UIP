@@ -133,7 +133,8 @@ class FinalPatchExpand2D(nn.Module):
         B, H, W, C = x.shape
         x = self.expand(x)
 
-        x = rearrange(x, 'b h w (p1 p2 c)-> b (h p1) (w p2) c', p1=self.dim_scale, p2=self.dim_scale, c=C//self.dim_scale)
+        x = rearrange(x, 'b h w (p1 p2 c)-> b (h p1) (w p2) c',
+            p1=self.dim_scale, p2=self.dim_scale, c=C//self.dim_scale)
         x= self.norm(x)
 
         return x
@@ -250,11 +251,22 @@ class AAM(nn.Module):
 
 
 class AquaticMambaNet(nn.Module):
-    def __init__(self, img_size=256, patch_size=4, in_chans=3, out_chans=3,
-                 depths_down=[2, 2, 6, 2], depths_up=[2, 6, 2, 2],
-                 dims_down=[40, 80, 160, 320], dims_up=[320, 160, 80, 40],
-                 d_state=16, drop_rate=0.0, attn_drop_rate=0.0, drop_path_rate=0.1,
-                 norm_layer: str='layer_norm', patch_norm=True, **kwargs):
+    def __init__(self,
+        img_size=256,
+        patch_size=4,
+        in_chans=3,
+        out_chans=3,
+        depths_down=[2, 2, 6, 2],
+        depths_up=[2, 6, 2, 2],
+        dims_down=[40, 80, 160, 320],
+        dims_up=[320, 160, 80, 40],
+        d_state=16,
+        drop_rate=0.0,
+        attn_drop_rate=0.0,
+        drop_path_rate=0.1,
+        norm_layer: str='layer_norm',
+        patch_norm=True,
+        **kwargs):
         super().__init__()
         self.out_chans = out_chans
         assert len(depths_down) == len(depths_up),\

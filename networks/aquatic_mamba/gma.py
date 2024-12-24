@@ -1,7 +1,6 @@
-import math
+"""from https://github.com/AILab-CVC/GroupMixFormer/blob/main/models/groupmixformer.py"""
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from timm.models.layers import DropPath, to_2tuple
 from einops import rearrange
 from torch import nn, einsum
@@ -56,6 +55,7 @@ class Aggregator(nn.Module):
         assert self.dim % self.seg == 0
         seg_dim = self.dim // self.seg
 
+        self.agg0 = Agg0(seg_dim)
         self.norm0 = nn.BatchNorm2d(seg_dim)
         self.act0 = nn.Hardswish()
 
@@ -70,9 +70,6 @@ class Aggregator(nn.Module):
         self.agg3 = SeparableConv2d(seg_dim, seg_dim, 7, 1, 3)
         self.norm3 = nn.BatchNorm2d(seg_dim)
         self.act3 = nn.Hardswish()
-
-        self.agg0 = Agg0(seg_dim)
-
 
     def forward(self, x, size, num_head):
         B, N, C = x.shape
@@ -95,8 +92,10 @@ class Aggregator(nn.Module):
 
         x = torch.cat([x0, x1, x2, x3], dim=1)
 
-        C = C // 5 * 4
+        C = C // self.seg * (self.seg - 1)
         x = x.reshape(3, B//3, num_head, C//num_head, H*W).permute(0, 1, 2, 4, 3)
+        # shape of x: (3, num_batch, num_head, num_token, dim)
+        # shape of x_local: (batch, num_token, seg_dim * 3)
 
         return x, x_local
 
@@ -141,11 +140,14 @@ class ConvRelPosEnc(nn.Module):
         q_img = q  # Shape: [B, h, H*W, Ch].
         v_img = v  # Shape: [B, h, H*W, Ch].
 
-        v_img = rearrange(v_img, 'B h (H W) Ch -> B (h Ch) H W', H=H, W=W)  # Shape: [B, h, H*W, Ch] -> [B, h*Ch, H, W].
-        v_img_list = torch.split(v_img, self.channel_splits, dim=1)  # Split according to channels.
+        # Shape: [B, h, H*W, Ch] -> [B, h*Ch, H, W].
+        v_img = rearrange(v_img, 'B h (H W) Ch -> B (h Ch) H W', H=H, W=W)
+        # Split according to channels.
+        v_img_list = torch.split(v_img, self.channel_splits, dim=1)
         conv_v_img_list = [conv(x) for conv, x in zip(self.conv_list, v_img_list)]
         conv_v_img = torch.cat(conv_v_img_list, dim=1)
-        conv_v_img = rearrange(conv_v_img, 'B (h Ch) H W -> B h (H W) Ch', h=h)  # Shape: [B, h*Ch, H, W] -> [B, h, H*W, Ch].
+        # Shape: [B, h*Ch, H, W] -> [B, h, H*W, Ch].
+        conv_v_img = rearrange(conv_v_img, 'B (h Ch) H W -> B h (H W) Ch', h=h)
 
         EV_hat_img = q_img * conv_v_img
 
@@ -153,7 +155,14 @@ class ConvRelPosEnc(nn.Module):
 
 
 class EfficientAtt(nn.Module):
-    def __init__(self, dim, num_heads=8, qkv_bias=False, qk_scale=None, attn_drop=0., proj_drop=0.,):
+    def __init__(self,
+        dim,
+        num_heads=8,
+        qkv_bias=False,
+        qk_scale=None,
+        attn_drop=0.,
+        proj_drop=0.):
+
         super().__init__()
 
         self.num_heads = num_heads
@@ -183,6 +192,7 @@ class EfficientAtt(nn.Module):
         qkv = self.qkv(x).reshape(B, N, 3, C).permute(2, 0, 1, 3).reshape(3*B, N, C)
 
         qkv, x_agg0 = self.aggregator(qkv, size, self.num_heads)
+        # shape of q/k/v: (num_batch, num_head, num_token, dim)
         q, k, v = qkv[0], qkv[1], qkv[2]
 
         # att
