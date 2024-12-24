@@ -9,7 +9,8 @@ import pyiqa
 import pandas as pd
 from tqdm import tqdm
 
-from utils.uciqe_uiqm import getUCIQE, getUIQM
+from utils.uciqe import getUCIQE
+from utils.uiqm import getUIQM
 from utils.ansi_escape import *
 from utils.df_save import save_df
 

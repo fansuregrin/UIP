@@ -1,41 +1,15 @@
-import numpy as np
-import cv2
+"""Modules for computing the Underwater Image Quality Measure (UIQM)
+Maintainer: Jahid (email: islam034@umn.edu)
+Paper: https://ieeexplore.ieee.org/abstract/document/7305804
+
+Modified by Fansure Grin (email: pwz113436@gmail.com)
+"""
 import math
+
+import cv2
+import numpy as np
 from scipy import ndimage
 
-
-def getUCIQE(img_path):
-    """
-    from https://github.com/TongJiayan/UCIQE-python
-    """
-    img_BGR = cv2.imread(img_path)
-    img_LAB = cv2.cvtColor(img_BGR, cv2.COLOR_BGR2LAB) 
-    img_LAB = np.array(img_LAB, dtype=np.float64)
-    # Trained coefficients are c1=0.4680, c2=0.2745, c3=0.2576 according to paper.
-    coe_Metric = [0.4680, 0.2745, 0.2576]
-    
-    img_lum = img_LAB[:,:,0]/255.0
-    img_a = img_LAB[:,:,1]/255.0
-    img_b = img_LAB[:,:,2]/255.0
-
-    # item-1
-    chroma = np.sqrt(np.square(img_a)+np.square(img_b))
-    sigma_c = np.std(chroma)
-
-    # item-2
-    img_lum = img_lum.flatten()
-    sorted_index = np.argsort(img_lum)
-    top_index = sorted_index[int(len(img_lum)*0.99)]
-    bottom_index = sorted_index[int(len(img_lum)*0.01)]
-    con_lum = img_lum[top_index] - img_lum[bottom_index]
-
-    # item-3
-    chroma = chroma.flatten()
-    sat = np.divide(chroma, img_lum, out=np.zeros_like(chroma, dtype=np.float64), where=img_lum!=0)
-    avg_sat = np.mean(sat)
-
-    uciqe = sigma_c*coe_Metric[0] + con_lum*coe_Metric[1] + avg_sat*coe_Metric[2]
-    return uciqe
 
 def mu_a(x, alpha_L=0.1, alpha_R=0.1):
     """
@@ -112,8 +86,7 @@ def eme(x, window_size):
     return w*val
 
 def _uism(x, window_size):
-    """
-      Underwater Image Sharpness Measure
+    """Underwater Image Sharpness Measure
     """
     # get image channels
     R = x[:,:,0]
@@ -135,6 +108,7 @@ def _uism(x, window_size):
     lambda_r = 0.299
     lambda_g = 0.587
     lambda_b = 0.144
+    
     return (lambda_r*r_eme) + (lambda_g*g_eme) + (lambda_b*b_eme)
 
 def plip_g(x,mu=1026.0):
@@ -161,7 +135,7 @@ def plip_multiplication(g1, g2):
 def plip_phiInverse(g):
     plip_lambda = 1026.0
     plip_beta   = 1.0
-    return plip_lambda * (1 - math.pow(math.exp(-g / plip_lambda), 1 / plip_beta));
+    return plip_lambda * (1 - math.pow(math.exp(-g / plip_lambda), 1 / plip_beta))
 
 def plip_phi(g):
     plip_lambda = 1026.0
@@ -203,22 +177,16 @@ def _uiconm(x, window_size):
             #try: val += plip_multiplication((top/bot),math.log(top/bot))
     return w*val
 
-"""
-# > Modules for computing the Underwater Image Quality Measure (UIQM)
-# Maintainer: Jahid (email: islam034@umn.edu)
-"""
 def getUIQM(img_path):
     """Function to return UIQM to be called from other programs.
     
     Args:
-        img_path: image path
+        img_path: filepath to the image
     """
     x = cv2.imread(img_path)
     x = cv2.cvtColor(x, cv2.COLOR_BGR2RGB)
     x = x.astype(np.float32)
-    ### UCIQE: https://ieeexplore.ieee.org/abstract/document/7300447
-    #c1 = 0.4680; c2 = 0.2745; c3 = 0.2576
-    ### UIQM https://ieeexplore.ieee.org/abstract/document/7305804
+
     c1 = 0.0282; c2 = 0.2953; c3 = 3.5753
     uicm   = _uicm(x)
     uism   = _uism(x, 8)

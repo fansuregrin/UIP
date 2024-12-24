@@ -10,7 +10,8 @@ from torchvision.transforms.functional import to_tensor
 from kornia.color import rgb_to_ycbcr
 from tqdm import tqdm
 
-from utils.uciqe_uiqm import getUCIQE, getUIQM
+from utils.uciqe import getUCIQE
+from utils.uiqm import getUIQM
 from utils.ansi_escape import *
 
 
