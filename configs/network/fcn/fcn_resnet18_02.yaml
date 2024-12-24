@@ -1,0 +1,5 @@
+name: fcn
+num_classes: 8
+backbone: resnet18
+use_pretrained: false
+use_pretrained_backbone: false
