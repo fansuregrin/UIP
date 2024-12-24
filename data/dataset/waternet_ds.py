@@ -76,7 +76,7 @@ class WaterNetDatasetCreator(DatasetCreator):
         ds = WaterNetDataset(
             cfg['root_dir'],
             cfg['inp_dir'],
-            cfg['ref_dir'],
+            cfg.get('ref_dir', None),
             get_transform(cfg.get('trans_opt', None))
         )
         return ds
