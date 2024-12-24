@@ -1,12 +1,15 @@
 import os
 import random
+from glob import glob
+from collections import OrderedDict
+import math
+
 import matplotlib.pyplot as plt
 import numpy as np
 import cv2
-import math
-from glob import glob
+from matplotlib import gridspec
+from matplotlib.axes import Axes
 from PIL import Image, ImageDraw
-from collections import OrderedDict
 
 
 SERIAL_NUMBERS = {
@@ -21,13 +24,6 @@ DEFAULT_TITLE_CFG = {
     'y': -0.1
 }
 
-
-def save_fig(fig, save_folder=None, save_fmt='png',
-             save_name='comparison', clear_after_save=True):
-    if os.path.exists(save_folder):
-        fig.savefig(os.path.join(save_folder, f"{save_name}.{save_fmt}"), format=save_fmt)
-    if clear_after_save:
-        fig.clear()
 
 def gen_comparison(
         img_name_list,
@@ -402,6 +398,64 @@ def gen_comparison_with_local_edges2(
                 ax.set_title(label, **title_cfg)
             ax.imshow(full_img)
     fig.tight_layout(**tight_layout_cfg)
+    return fig
+
+
+def visualize_color_distribution(
+        img_name,
+        img_dirs,
+        ref_dir,
+        title_cfg=DEFAULT_TITLE_CFG,
+        n_row=None,
+        expected_size=(256, 256),
+        w_idx = None,
+        auto_nb='abc',
+        tight_layout_cfg=dict()):
+    num = len(img_dirs)
+    if isinstance(n_row, int):
+        num_rows = n_row
+    else:
+        num_rows = math.floor(math.sqrt(num))
+    num_cols = math.ceil(num/num_rows)
+
+    fig_width = num_cols * (expected_size[0]/100*(1+0.1))
+    fig_height = num_rows * (expected_size[1]/100*(2+0.1))
+    fig = plt.figure(figsize=(fig_width, fig_height))
+    gs0 = gridspec.GridSpec(num_rows, num_cols, figure=fig)
+
+    ref = Image.open(os.path.join(ref_dir, img_name)).convert('RGB')
+    if ref.size != expected_size:
+        ref = ref.resize(expected_size)
+    w_idx = ref.width // 2
+    ref = np.asarray(ref, dtype=np.float32) / 255.0
+    r_vals_ref = ref[:, w_idx, 0]
+
+    for i,label in enumerate(img_dirs.keys()):
+            img_fp = os.path.join(img_dirs[label], img_name)
+            img = Image.open(img_fp)
+            if img.size != expected_size:
+                img = img.resize(expected_size)
+            img_arr = np.asarray(img, dtype=np.float32) / 255.0
+
+            sub_spec: gridspec.SubplotSpec = gs0[i // num_cols, i % num_cols]
+            gs1 = sub_spec.subgridspec(2, 1)
+            img_ax: Axes = fig.add_subplot(gs1[0])
+            chart_ax: Axes = fig.add_subplot(gs1[1])
+            
+            draw = ImageDraw.Draw(img)
+            draw.line([(w_idx, 0), (w_idx, img.height-1)], fill='blue', width=2)
+            img_ax.imshow(img)
+            img_ax.axis('off')
+            
+            chart_ax.plot(r_vals_ref, label='Reference')
+            chart_ax.plot(img_arr[:, w_idx, 0], label=label)
+            chart_ax.axis('on')
+            chart_ax.legend()
+            if SERIAL_NUMBERS.get(auto_nb, None):
+                label = f'({SERIAL_NUMBERS[auto_nb][i]}) {label}'
+            chart_ax.set_title(label, **title_cfg)
+    fig.tight_layout(**tight_layout_cfg)
+
     return fig
 
 
