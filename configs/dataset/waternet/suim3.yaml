@@ -1,0 +1,20 @@
+test_train:
+  type: 'waternet'
+  root_dir: '/DataA/pwz/workshop/Datasets/SUIM3/train'
+  inp_dir: 'images'
+  trans_opt:
+    transforms:
+      - name: 'resize'
+        width: 256
+        height: 256
+      - name: 'to_tensor'
+test_test:
+  type: 'waternet'
+  root_dir: '/DataA/pwz/workshop/Datasets/SUIM3/test'
+  inp_dir: 'images'
+  trans_opt:
+    transforms:
+      - name: 'resize'
+        width: 256
+        height: 256
+      - name: 'to_tensor'

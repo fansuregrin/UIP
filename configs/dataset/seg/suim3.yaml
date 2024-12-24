@@ -82,6 +82,19 @@ test:
         width: 512
         height: 512
       - name: 'to_tensor'
+train_erd_enhanced:
+  type: 'seg'
+  root_dir: '/DataA/pwz/workshop/Datasets/SUIM3/train'
+  image_dir: 'erd_enhanced'
+  mask_dir: 'masks'
+  trans_opt:
+    additional_targets:
+      mask: image
+    transforms:
+      - name: 'resize'
+        width: 256
+        height: 256
+      - name: 'to_tensor'
 test_train:
   type: 'seg'
   root_dir: '/DataA/pwz/workshop/Datasets/SUIM3/train'
