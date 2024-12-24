@@ -299,11 +299,6 @@ class AquaticMambaNet(nn.Module):
         dpr_down = [x.item() for x in torch.linspace(0, drop_path_rate, sum(depths_down))]
         dpr_up = [x.item() for x in torch.linspace(0, drop_path_rate, sum(depths_up))][::-1]
 
-        self.use_cdam = kwargs.get('use_cdam', False)
-        if self.use_cdam:
-            self.cdam_list = nn.ModuleList([CDAM(dims_down[i]) for i in range(self.num_layers)])
-            self.cdam_list.append(CDAM(out_chans))
-
         self.enhance_layers_down = nn.ModuleList()
         self.downsample_layers = nn.ModuleList()
         for i_layer in range(self.num_layers):
@@ -372,8 +367,6 @@ class AquaticMambaNet(nn.Module):
         for i in range(self.num_layers):
             skip_list.append(x)
             x = self.enhance_layers_down[i](x)
-            if self.use_cdam:
-                x = self.cdam_list[i](x.permute(0,3,1,2)).permute(0,2,3,1)
             if i < self.num_layers - 1:
                 x = self.downsample_layers[i](x)
         
@@ -393,8 +386,6 @@ class AquaticMambaNet(nn.Module):
         x = self.final_up(x)
         x = x.permute(0,3,1,2)
         x = self.final_conv(x)
-        if self.use_cdam:
-            x = self.cdam_list[-1](x)
 
         return x
 
