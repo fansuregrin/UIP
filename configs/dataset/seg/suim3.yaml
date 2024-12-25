@@ -39,7 +39,7 @@ classes:
     symbol: 'SR'
     desc: 'Sea-floor and rocks'
     id: 7
-train:
+train: &train
   type: 'seg'
   root_dir: '/DataA/pwz/workshop/Datasets/SUIM3/train'
   image_dir: 'images'
@@ -49,8 +49,8 @@ train:
       mask: image
     transforms:
       - name: 'resize'
-        width: 512
-        height: 512
+        width: 256
+        height: 256
       - name: 'horizontal_flip'
         p: 0.5
       - name: 'to_tensor'
@@ -64,12 +64,12 @@ val:
       mask: image
     transforms:
       - name: 'resize'
-        width: 512
-        height: 512
+        width: 256
+        height: 256
       - name: 'horizontal_flip'
         p: 0.5
       - name: 'to_tensor'
-test:
+test: &test
   type: 'seg'
   root_dir: '/DataA/pwz/workshop/Datasets/SUIM3/test'
   image_dir: 'images'
@@ -79,45 +79,39 @@ test:
       mask: image
     transforms:
       - name: 'resize'
-        width: 512
-        height: 512
+        width: 256
+        height: 256
       - name: 'to_tensor'
 train_erd_enhanced:
-  type: 'seg'
-  root_dir: '/DataA/pwz/workshop/Datasets/SUIM3/train'
+  <<: *train
   image_dir: 'erd_enhanced'
-  mask_dir: 'masks'
-  trans_opt:
-    additional_targets:
-      mask: image
-    transforms:
-      - name: 'resize'
-        width: 256
-        height: 256
-      - name: 'to_tensor'
+train_sguie_enhanced:
+  <<: *train
+  image_dir: 'sguie_enhanced'
+train_utuie_enhanced:
+  <<: *train
+  image_dir: 'utuie_enhanced'
+train_waternet_enhanced:
+  <<: *train
+  image_dir: 'waternet_enhanced' 
+train_syreanet_enhanced:
+  <<: *train
+  image_dir: 'syreanet_enhanced' 
 test_train:
-  type: 'seg'
+  <<: *test
   root_dir: '/DataA/pwz/workshop/Datasets/SUIM3/train'
-  image_dir: 'images'
-  mask_dir: 'masks'
-  trans_opt:
-    additional_targets:
-      mask: image
-    transforms:
-      - name: 'resize'
-        width: 512
-        height: 512
-      - name: 'to_tensor'
 test_erd_enhanced:
-  type: 'seg'
-  root_dir: '/DataA/pwz/workshop/Datasets/SUIM3/test'
+  <<: *test
   image_dir: 'erd_enhanced'
-  mask_dir: 'masks'
-  trans_opt:
-    additional_targets:
-      mask: image
-    transforms:
-      - name: 'resize'
-        width: 256
-        height: 256
-      - name: 'to_tensor'
+test_sguie_enhanced:
+  <<: *test
+  image_dir: 'sguie_enhanced'
+test_utuie_enhanced:
+  <<: *test
+  image_dir: 'utuie_enhanced'
+test_waternet_enhanced:
+  <<: *test
+  image_dir: 'waternet_enhanced'
+test_syreanet_enhanced:
+  <<: *test
+  image_dir: 'syreanet_enhanced'
