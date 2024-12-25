@@ -8,6 +8,7 @@ from timm.models.layers import trunc_normal_,to_2tuple
 
 from .gma import GmaBlock
 from .vss import VssBlock
+from networks.swin_transformer.swin_transformer import SwinTransformerBlock
 from networks.condconv import CondConv2D
 from utils import get_norm_layer
 
@@ -142,21 +143,40 @@ class FinalPatchExpand2D(nn.Module):
 
 class EnhanceBlock(nn.Module):
     def __init__(self,
-                 dim,
-                 drop_path = 0.0,
-                 norm_layer = nn.LayerNorm,
-                 attn_drop = 0.0,
-                 d_state=16):
+        dim,
+        drop_path = 0.0,
+        norm_layer = nn.LayerNorm,
+        attn_drop = 0.0,
+        **kwargs):
+
         super().__init__()
+        
         if norm_layer is not None:
             self.norm = norm_layer(dim)
         else:
             self.norm = nn.LayerNorm(dim)
-        self.vss = VssBlock(dim, drop_path, norm_layer, attn_drop, d_state)
+        
+        self.use_vss = kwargs.get('use_vss', True)
+        if self.use_vss:
+            d_state = kwargs.get('d_state', 16)
+            self.vss = VssBlock(dim, drop_path, norm_layer, attn_drop, d_state)
+        else:
+            input_resolution = kwargs.get('input_resolution')
+            num_heads = kwargs.get('num_heads')
+            window_size = kwargs.get('window_size', 7)
+            self.swinT = SwinTransformerBlock(dim, input_resolution, num_heads,
+            window_size, attn_drop=attn_drop, drop_path=drop_path, norm_layer=norm_layer)
+        
         self.se = SqueezeExcitation(dim, dim // 16)
         
     def forward(self, x):
-        x = self.vss(self.norm(x)) + x
+        B, H, W, C = x.shape
+        if self.use_vss:
+            x = self.vss(self.norm(x)) + x
+        else:
+            x = x.view(B, H*W, C)
+            x = self.swinT(self.norm(x)) + x
+            x = x.view(B, H, W, C)
         x = self.se(self.norm(x).permute(0,3,1,2)).permute(0,2,3,1) + x
         return x
 
@@ -169,7 +189,6 @@ class EnhanceLayer(nn.Module):
         attn_drop = 0.0,
         drop_path = 0.0, 
         norm_layer = nn.LayerNorm,
-        d_state = 16,
         **kwargs,
     ):
         super().__init__()
@@ -182,7 +201,7 @@ class EnhanceLayer(nn.Module):
                 drop_path = drop_path[i] if isinstance(drop_path, list) else drop_path,
                 norm_layer = norm_layer,
                 attn_drop = attn_drop,
-                d_state = d_state
+                **kwargs
             ) for i in range(depth)])
 
     def forward(self, x):
@@ -229,8 +248,8 @@ class CDAM(nn.Module):
         return x
 
 
-class AAM(nn.Module):
-    """Adaptive adjustment module"""
+class AEM(nn.Module):
+    """Adaptive enhancement module"""
     def __init__(self, input_channels, squeeze_channels, **kwargs):
         super().__init__()
         self.factor_generator = nn.Sequential(
@@ -260,7 +279,6 @@ class AquaticMambaNet(nn.Module):
         depths_up=[2, 6, 2, 2],
         dims_down=[40, 80, 160, 320],
         dims_up=[320, 160, 80, 40],
-        d_state=16,
         drop_rate=0.0,
         attn_drop_rate=0.0,
         drop_path_rate=0.1,
@@ -289,8 +307,8 @@ class AquaticMambaNet(nn.Module):
             embed_dim=self.embed_dim, norm_layer=norm_layer if patch_norm else None)
         
         self.use_ape = kwargs.get('use_ape', False)
+        self.patches_resolution = self.patch_embed.patches_resolution
         if self.use_ape:
-            self.patches_resolution = self.patch_embed.patches_resolution
             self.absolute_pos_embed = nn.Parameter(torch.zeros(1, *self.patches_resolution, self.embed_dim))
             trunc_normal_(self.absolute_pos_embed, std=.02)
         self.pos_drop = nn.Dropout(p=drop_rate)
@@ -302,13 +320,14 @@ class AquaticMambaNet(nn.Module):
         self.enhance_layers_down = nn.ModuleList()
         self.downsample_layers = nn.ModuleList()
         for i_layer in range(self.num_layers):
+            if not kwargs.get('use_vss', True):
+                kwargs['input_resolution'] = [n//(2**i_layer) for n in self.patches_resolution]
             layer = EnhanceLayer(
                 dim = dims_down[i_layer],
                 depth = depths_down[i_layer],
                 attn_drop = attn_drop_rate,
                 drop_path = dpr_down[sum(depths_down[:i_layer]):sum(depths_down[:i_layer + 1])],
                 norm_layer = norm_layer,
-                d_state = math.ceil(dims_down[0] / 6) if d_state is None else d_state,
                 **kwargs
             )
             self.enhance_layers_down.append(layer)
@@ -318,21 +337,24 @@ class AquaticMambaNet(nn.Module):
         self.enhance_layers_up = nn.ModuleList()
         self.upsample_layers = nn.ModuleList()
         for i_layer in range(self.num_layers):
+            if not kwargs.get('use_vss', True):
+                kwargs['input_resolution'] = [n//(2**(self.num_layers-i_layer-1)) 
+                    for n in self.patches_resolution]
             layer = EnhanceLayer(
                 dim = dims_up[i_layer],
                 depth = depths_up[i_layer],
                 attn_drop = attn_drop_rate,
                 drop_path = dpr_up[sum(depths_up[:i_layer]):sum(depths_up[:i_layer + 1])],
                 norm_layer = norm_layer,
-                d_state = math.ceil(dims_up[-1] / 6) if d_state is None else d_state,
+                **kwargs
             )
             self.enhance_layers_up.append(layer)
             if i_layer > 0:
                 self.upsample_layers.append(PatchExpand2D(dims_up[i_layer], norm_layer=norm_layer))
 
-        self.use_aam = kwargs.get('use_aam', False)
-        if self.use_aam:
-            self.aam = AAM(dims_down[-1], dims_down[-1])
+        self.use_aem = kwargs.get('use_aem', False)
+        if self.use_aem:
+            self.aem = AEM(dims_down[-1], dims_down[-1])
 
         self.final_up = FinalPatchExpand2D(dim=dims_up[-1], dim_scale=4, norm_layer=norm_layer)
         self.final_conv = nn.Conv2d(dims_up[-1]//4, out_chans, 1)
@@ -391,8 +413,8 @@ class AquaticMambaNet(nn.Module):
 
     def forward(self, x):
         x, skip_list = self.forward_features(x)
-        if self.use_aam:
-            x = self.aam(x)
+        if self.use_aem:
+            x = self.aem(x)
         x = self.forward_features_up(x, skip_list)
         x = x + skip_list[0]
         x = self.forward_final(x)
