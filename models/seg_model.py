@@ -376,6 +376,7 @@ class SegModel(BaseModel):
         os.makedirs(result_dir)
         os.makedirs(os.path.join(result_dir, 'paired'))
         os.makedirs(os.path.join(result_dir, 'single/predicted'))
+        os.makedirs(os.path.join(result_dir, 'single/rgb_mask'))
 
         stream_metrics = StreamSegMetrics(len(self.classes))
         batch_idx = 1
@@ -398,10 +399,23 @@ class SegModel(BaseModel):
 
             # save predicted masks
             img_names = batch['img_name']
-            for pred_mask,img_name in zip(pred_masks, img_names):
-                pred_mask = pred_mask.softmax(0).argmax(0).detach().cpu().numpy()
+            for pred_mask,img_name,inp_img in zip(pred_masks, img_names, inp_imgs):
+                inp_img = (inp_img * 255).to(torch.uint8)
+                pred_mask = pred_mask.softmax(0).argmax(0).detach().cpu()
+                boolean_pred_mask = torch.stack(
+                    [(pred_mask == i) for i in range(len(self.classes))]
+                )
                 img_name = os.path.splitext(img_name)[0] + '.png'
-                cv2.imwrite(os.path.join(result_dir, 'single/predicted', img_name), pred_mask)
+                cv2.imwrite(os.path.join(result_dir, 'single/predicted', img_name),
+                    pred_mask.numpy())
+                
+                mask_alpha = self.cfg.get('mask_alpha', 0.5)
+                colors = ['#'+clz['color'] for clz in self.classes]
+                img_with_pred_mask = draw_segmentation_masks(inp_img, boolean_pred_mask,
+                    alpha=mask_alpha, colors=colors).permute(1,2,0).cpu().numpy()
+                cv2.imwrite(os.path.join(result_dir, 'single/rgb_mask', img_name),
+                    cv2.cvtColor(img_with_pred_mask, cv2.COLOR_RGB2BGR)) 
+
             
             # visualized results
             full_img = self._gen_comparison_img(inp_imgs, pred_masks, ref_masks)
