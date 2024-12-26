@@ -31,28 +31,27 @@ def gen_comparison(
         title_cfg=DEFAULT_TITLE_CFG,
         expected_size=(256, 256),
         auto_nb='abc',
-        tight_layout_cfg=dict()):
+        tight_layout_cfg=dict(),
+        **kwargs):
     num_rows = len(img_name_list)
     num_cols = len(img_dirs)
 
     fig_width = num_cols * (expected_size[0]/100*(1+0.1))
     fig_height = num_rows * (expected_size[1]/100*(1+0.1))
-    fig, axes = plt.subplots(num_rows, num_cols, figsize=(fig_width, fig_height))
-    if num_rows == 1:
-        axes = np.expand_dims(axes, 0)
-    elif num_cols == 1:
-        axes = np.expand_dims(axes, 1)
-
-    if not isinstance(img_dirs, OrderedDict):
-        img_dirs = OrderedDict(img_dirs)
+    fig = plt.figure(figsize=(fig_width, fig_height))
+    gs = gridspec.GridSpec(num_rows, num_cols, figure=fig)
 
     for i in range(num_rows):
         for j, label in enumerate(img_dirs):
             img_fp = os.path.join(img_dirs[label], img_name_list[i])
             img = Image.open(img_fp)
+            if img.mode != 'RGB':
+                img = img.convert('RGB')
             if img.size != expected_size:
-                img = img.resize(expected_size)
-            ax = axes[i, j]
+                img = img.resize(expected_size,
+                    resample=kwargs.get('resize_algo', Image.Resampling.BICUBIC))
+            
+            ax = fig.add_subplot(gs[i, j])
             ax.axis('off')
             if i == num_rows-1:
                 if SERIAL_NUMBERS.get(auto_nb, None):
