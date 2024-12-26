@@ -1,5 +1,7 @@
-import torch.nn as nn
 from typing import Union
+
+import torch.nn as nn
+
 from networks.swin_transformer.swin_transformer import SwinTransformerBlock
 from .conv_att import ChannelAttention, SpatialAttention
 from .resnet import ResnetBlock
@@ -17,18 +19,23 @@ class ConvBlock(nn.Module):
         self.conv_block = self.build_conv_block(dim, padding_type, norm_layer,
             use_dropout, use_bias)
 
-    def build_conv_block(self, dim, padding_type, norm_layer, use_dropout, use_bias):
+    def build_conv_block(self,
+        dim: int,
+        padding_type: str,
+        norm_layer: type,
+        use_dropout: bool,
+        use_bias: bool):
         """Construct a convolutional block.
-
-        Parameters:
-            dim (int)           -- the number of channels in the conv layer.
-            padding_type (str)  -- the name of padding layer: reflect | replicate | zero
-            norm_layer          -- normalization layer
-            use_dropout (bool)  -- if use dropout layers.
-            use_bias (bool)     -- if the conv layer uses bias or not
 
         Returns a conv block (with a conv layer, a normalization layer, 
         and a non-linearity layer (ReLU))
+        
+        Args:
+            dim: the number of channels in the conv layer.
+            padding_type (str): the name of padding layer: reflect | replicate | zero.
+            norm_layer: normalization layer.
+            use_dropout: if use dropout layers.
+            use_bias: if the conv layer uses bias or not.
         """
         conv_block = []
         p = 0
@@ -91,10 +98,11 @@ class AttDownBlock(nn.Module):
             n_swinT: Number of swinTransformer block.
             norm_layer: Type of Normalization layer.
             use_ca: Whether to use channel attention.
-            use_sa_swinT: Whether to use saptail attention and SwinT.
+            use_sa: Whether to use saptail attention.
+            use_swinT: Whether to use saptail SwinT.
             use_dropout: Whether to use dropout.
             dropout_rate: Probability of dropout layer.
-            fused_window_process: 
+            fused_window_process: Fused window process for acceleration.
         """
         super().__init__()
         use_bias = False if norm_layer else True
@@ -128,10 +136,10 @@ class AttDownBlock(nn.Module):
         if self.use_sa:
             out = self.sa(out) * out
         if self.use_swinT:
-            # alternative for `out = rearrange(out, 'n c h w -> n (h w) c')`
+            # out = rearrange(out, 'n c h w -> n (h w) c')
             out = out.permute(0, 2, 3, 1).reshape(out.size(0), -1, out.size(1))
             out = self.swinTs(out)
-            # alternative ofr `out = rearrange(out, 'n (h w) c -> n c h w', h=self.swinT_resolution[0])`
+            # out = rearrange(out, 'n (h w) c -> n c h w', h=self.swinT_resolution[0])
             out = out.reshape(out.size(0), self.swinT_resolution[0], 
                               self.swinT_resolution[1], -1).permute(0, 3, 1, 2)
         return out
@@ -141,26 +149,26 @@ class ERD(nn.Module):
     """Encoder-Residual-Decoder Network.
     """
     def __init__(self,
-                 input_nc: int,
-                 output_nc: int,
-                 n_blocks_res: int,
-                 n_down: int,
-                 input_h: int = 256,
-                 input_w: int = 256,
-                 ngf: int = 64,
-                 n_swinT: int = 1,
-                 wrpm_kernel_size: int = 7,
-                 wrpm_padding_size: int = 3,
-                 ftm_kernel_size: int = 7,
-                 ftm_padding_size: int = 3,
-                 padding_type: str = 'reflect',
-                 use_dropout: bool = False,
-                 use_ca: bool = True,
-                 use_sa: bool = True,
-                 use_swinT: bool = True,
-                 norm_layer: str = 'instance_norm',
-                 fused_window_process: bool = False,
-                 **kwargs):
+        input_nc: int,
+        output_nc: int,
+        n_blocks_res: int,
+        n_down: int,
+        input_h: int = 256,
+        input_w: int = 256,
+        ngf: int = 64,
+        n_swinT: int = 1,
+        wrpm_kernel_size: int = 7,
+        wrpm_padding_size: int = 3,
+        ftm_kernel_size: int = 7,
+        ftm_padding_size: int = 3,
+        padding_type: str = 'reflect',
+        use_dropout: bool = False,
+        use_ca: bool = True,
+        use_sa: bool = True,
+        use_swinT: bool = True,
+        norm_layer: str = 'instance_norm',
+        fused_window_process: bool = False,
+        **kwargs):
         """Initializes ERD.
 
         Args:
@@ -171,17 +179,18 @@ class ERD(nn.Module):
             input_h: Width of input image.
             input_w: Height of input image.
             ngf: Number of kernels of Conv2d layer in `WRPM`.
-            n_swinT: Number of swinTransformer within a downsample block.
+            n_swinT: Number of swin transformer within a downsample block.
             wrpm_kernel_size: kernel size of conv in `WRPM`.
             wrpm_padding_size: padding size in `WRPM`.
             ftm_kernel_size: kernel size of conv in `FTM`.
             ftm_padding_size: padding size in `FTM`.
             padding_type: Type of padding layer in Residual Block.
             use_dropout: Whether to use dropout.
-            use_ca: Whether to use `FECAM` in down-sampling.
-            use_sa_swinT: Whether to use `GAPIAM` in down-sampling.
+            use_ca: Whether to use channel attention in the downsample block.
+            use_sa: Whether to use spatial attention in the downsample block.
+            use_swinT: Whether to use swin tranformer in the downsampe block.
             norm_layer: Type of Normalization layer.
-            fused_window_process: Whether to use fused window process.
+            fused_window_process: Whether to use fused window process for acceleration.
         """
         assert (n_blocks_res >= 0 and n_down >= 0)
         super().__init__()
@@ -237,12 +246,12 @@ class ERD(nn.Module):
         )
 
     def _create_wrpm(self,
-                     inp_nc: int,
-                     out_nc: int,
-                     kernel_size: int,
-                     norm_layer: Union[None, nn.Module] = None,
-                     padding_layer: Union[None, nn.Module] = None,
-                     padding_size: int = 3) -> nn.Module:
+        inp_nc: int,
+        out_nc: int,
+        kernel_size: int,
+        norm_layer: Union[None, nn.Module] = None,
+        padding_layer: Union[None, nn.Module] = None,
+        padding_size: int = 3) -> nn.Module:
         """Create Wide Range Perception Module.
         """
         wrpm = []
