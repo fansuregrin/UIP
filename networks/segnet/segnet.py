@@ -1,3 +1,7 @@
+"""PyTorch implementation of SegNet: from https://github.com/vinceecws/SegNet_PyTorch
+Original paper: A Deep Convolutional Encoder-Decoder Architecture for Image Segmentation
+Paper link: https://arxiv.org/pdf/1511.00561.pdf
+"""
 import torch.nn as nn
 import torch.nn.functional as F
 
