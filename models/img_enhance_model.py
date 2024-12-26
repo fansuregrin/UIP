@@ -836,11 +836,15 @@ class AquaticMamba(ImgEnhanceModel):
             params = self.network.parameters()
         optimizer = self.cfg['optimizer']
         if optimizer == 'adam':
-            self.optimizer = torch.optim.Adam(params, lr=self.cfg['lr'])
+            self.optimizer = torch.optim.Adam(params, lr=self.cfg['lr'],
+                betas=self.cfg.get('betas', (0.9, 0.999)),
+                weight_decay=self.cfg.get('weight_decay', 0.))
         elif optimizer == 'sgd':
-            self.optimizer = torch.optim.SGD(params, lr=self.cfg['lr'])
+            self.optimizer = torch.optim.SGD(params, lr=self.cfg['lr'],
+                momentum=self.cfg.get('momentum', 0.),
+                weight_decay=self.cfg.get('weight_decay', 0.))
         else:
-            assert f"<{optimizer}> is supported!"
+            assert f"<{optimizer}> is not supported!"
 
     @staticmethod
     def modify_args(parser, mode):
