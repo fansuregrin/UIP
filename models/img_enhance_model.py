@@ -114,22 +114,21 @@ class ImgEnhanceModel(BaseModel):
         with open(self.cfg.get('net_cfg')) as f:
             self.net_cfg = yaml.load(f, yaml.FullLoader)
         self.net_name = self.net_cfg['name']
-        self.network = create_network(self.net_cfg)
-        if isinstance(self.network, dict):
-            for label in self.network:
-                self.network[label].to(self.device)
-        else:
-            self.network.to(self.device)
+        self.network = create_network(self.net_cfg).to(self.device)
 
     def _set_optimizer(self):
         params = self.network.parameters()
         optimizer = self.cfg['optimizer']
         if optimizer == 'adam':
-            self.optimizer = torch.optim.Adam(params, lr=self.cfg['lr'])
+            self.optimizer = torch.optim.Adam(params, lr=self.cfg['lr'],
+                betas=self.cfg.get('betas', (0.9, 0.999)),
+                weight_decay=self.cfg.get('weight_decay', 0.))
         elif optimizer == 'sgd':
-            self.optimizer = torch.optim.SGD(params, lr=self.cfg['lr'])
+            self.optimizer = torch.optim.SGD(params, lr=self.cfg['lr'],
+                momentum=self.cfg.get('momentum', 0.),
+                weight_decay=self.cfg.get('weight_decay', 0.))
         else:
-            assert f"<{optimizer}> is supported!"
+            assert f"<{optimizer}> is not supported!"
 
     def _set_lr_scheduler(self):
         with open(self.cfg['lr_scheduler_cfg']) as f:

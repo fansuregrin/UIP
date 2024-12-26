@@ -8,22 +8,29 @@ class BaseArgParser:
         self.modify()
     
     def setup(self):
-        self.parser = ArgumentParser()
+        self.parser = ArgumentParser(conflict_handler='resolve')
         self.parser.add_argument('--model_name', type=str, required=True, help='name of the model')
         self.parser.add_argument('--device', type=str, default='cuda',
-                                 help='the device on which a tensor is or will be allocated')
+            help='the device on which a tensor is or will be allocated')
         self.parser.add_argument('--ckpt_dir', type=str, default='checkpoints', 
-                                 help='the directory saves the state of the network, optimizer, learning rate scheduler, etc')
-        self.parser.add_argument('--quite', action='store_true', help='do not print message to stdout')
-        self.parser.add_argument('--name', type=str, default='experiment', help='name of training process')
-        self.parser.add_argument('--net_cfg', type=str, required=True, help='path to network config file')
-        self.parser.add_argument('--ds_cfg', type=str, required=True, help='path to dataset config file')
+            help='the directory saves states of the network, optimizer, learning rate scheduler, etc')
+        self.parser.add_argument('--quite', action='store_true',
+            help='do not print message to stdout')
+        self.parser.add_argument('--name', type=str, default='experiment',
+            help='name of training process')
+        self.parser.add_argument('--net_cfg', type=str, required=True,
+            help='path to network config file')
+        self.parser.add_argument('--ds_cfg', type=str, required=True,
+            help='path to dataset config file')
         self.parser.add_argument('--batch_size', type=int, default=8, help='the batch size')
-        self.parser.add_argument('--shuffle', action='store_true', help='shuffle the data at each epoch')
-        self.parser.add_argument('--num_workers', type=int, default=4, help='how many subprocesses to use for data loading')
-        self.parser.add_argument('--drop_last', action='store_true', help='drop the last incomplete batch, if the dataset size is not divisible by the batch size')
+        self.parser.add_argument('--shuffle', action='store_true',
+            help='shuffle the data at each epoch')
+        self.parser.add_argument('--num_workers', type=int, default=4,
+            help='how many subprocesses to use for data loading')
+        self.parser.add_argument('--drop_last', action='store_true',
+            help='drop the last incomplete batch, if the dataset size is not divisible by the batch size')
         self.parser.add_argument('--train_ds', type=str, default='train')
-        self.parser.add_argument('--val_ds', type=str, default='val')
+        self.parser.add_argument('--val_ds', type=str, default='val')   
         self.parser.add_argument('--test_ds', type=str, default='test')
 
     def modify(self):
@@ -47,12 +54,24 @@ class TrainArgParser(BaseArgParser):
         self.parser.add_argument('--start_iteration', type=int, default=0, help='which iteration to start from')
         self.parser.add_argument('--num_epochs', type=int, default=50, help='number of epochs for training')
         self.parser.add_argument('--seed', type=int, default=2023, help='lucky random seed')
-        self.parser.add_argument('--load_prefix', type=str, default='weights', help='the prefix string of the filename of the weights to be loaded')
-        self.parser.add_argument('--save_prefix', type=str, default='', help='the prefix string of the filename that needs to save the weights')
-        self.parser.add_argument('--optimizer', type=str, default='adam', help='which optimizer to use')
-        self.parser.add_argument('--lr', type=float, default=0.001, help='learning rate for optimizer')
-        self.parser.add_argument('--val_interval', type=int, default=100, help='how many iterations to validate the model')
-        self.parser.add_argument('--ckpt_interval', type=int, default=5, help='how many epochs to save checkpoint')
+        self.parser.add_argument('--load_prefix', type=str, default='weights',
+            help='the prefix string of the filename of the weights to be loaded')
+        self.parser.add_argument('--save_prefix', type=str, default='',
+            help='the prefix string of the filename that needs to save the weights')
+        self.parser.add_argument('--optimizer', type=str, default='adam',
+            help='which optimizer to use')
+        self.parser.add_argument('--lr', type=float, default=0.001,
+            help='learning rate for optimizer')
+        self.parser.add_argument('--betas', nargs=2, type=float, default=[0.9, 0.999],
+            help='coefficients used for computing running averages of gradient and its square')
+        self.parser.add_argument('--momentum', type=float, default=0.,
+            help='momentum factor')
+        self.parser.add_argument('--weight_decay', type=float, default=0,
+            help='weight decay (L2 penalty)')
+        self.parser.add_argument('--val_interval', type=int, default=100,
+            help='how many iterations to validate the model')
+        self.parser.add_argument('--ckpt_interval', type=int, default=5,
+            help='how many epochs to save states of network, optimizer, and etc.')
 
 
 class TestArgParser(BaseArgParser):
