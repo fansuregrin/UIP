@@ -45,8 +45,6 @@ train: &train
   image_dir: 'images'
   mask_dir: 'masks'
   trans_opt:
-    additional_targets:
-      mask: image
     transforms:
       - name: 'resize'
         width: 256
@@ -60,8 +58,6 @@ val:
   image_dir: 'images'
   mask_dir: 'masks'
   trans_opt:
-    additional_targets:
-      mask: image
     transforms:
       - name: 'resize'
         width: 256
@@ -75,8 +71,6 @@ test: &test
   image_dir: 'images'
   mask_dir: 'masks'
   trans_opt:
-    additional_targets:
-      mask: image
     transforms:
       - name: 'resize'
         width: 256
