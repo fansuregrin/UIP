@@ -3,13 +3,24 @@ from models import _models
 
 
 class BaseArgParser:
-    def __init__(self):
-        self.setup()
-        self.modify()
+    def __init__(self, **kwargs):
+        self.parser_cfg = kwargs
+        self._setup()
     
-    def setup(self):
-        self.parser = ArgumentParser(conflict_handler='resolve')
-        self.parser.add_argument('--model_name', type=str, required=True, help='name of the model')
+    def _setup(self):
+        self.parser_cfg['conflict_handler'] = 'resolve'
+        self.parser_cfg['add_help'] = False
+        self.parser = ArgumentParser(**self.parser_cfg)
+        self.parser.add_argument('--model_name', type=str, required=True,
+            help='name of the model')
+        self.parser.add_argument('--mode', type=str, default='train')
+        args, _ = self.parser.parse_known_args()
+        self._add_common_args()
+        model = _models.get(args.model_name)
+        self.parser: ArgumentParser = model.modify_args(self.parser, args.mode)
+        self.parser.add_argument('-h', '--help', action='help')
+    
+    def _add_common_args(self):
         self.parser.add_argument('--device', type=str, default='cuda',
             help='the device on which a tensor is or will be allocated')
         self.parser.add_argument('--ckpt_dir', type=str, default='checkpoints', 
@@ -33,11 +44,6 @@ class BaseArgParser:
         self.parser.add_argument('--val_ds', type=str, default='val')   
         self.parser.add_argument('--test_ds', type=str, default='test')
 
-    def modify(self):
-        args, _ = self.parser.parse_known_args()
-        model = _models.get(args.model_name)
-        self.parser = model.modify_args(self.parser, args.mode)
-
     def parse_args(self):
         return vars(self.parser.parse_args())
 
@@ -46,8 +52,8 @@ class TrainArgParser(BaseArgParser):
     def __init__(self):
         super().__init__()
 
-    def setup(self):
-        super().setup()
+    def _add_common_args(self):
+        super()._add_common_args()
         self.parser.add_argument('--mode', type=str, default='train', choices=['train'])
         self.parser.add_argument('--lr_scheduler_cfg', type=str, default='configs/lr_scheduler/none.yaml')
         self.parser.add_argument('--start_epoch', type=int, default=0, help='which epoch to start from')
@@ -78,8 +84,8 @@ class TestArgParser(BaseArgParser):
     def __init__(self):
         super().__init__()
 
-    def setup(self):
-        super().setup()
+    def _add_common_args(self):
+        super()._add_common_args()
         self.parser.add_argument('--mode', type=str, default='test', choices=['test'])
         self.parser.add_argument('--test_name', type=str, help='name for test dataset')
         self.parser.add_argument('--checkpoint_dir', type=str, default='checkpoints', help='path to checkpoint dir')
