@@ -85,9 +85,25 @@ class IeSegModel(BaseModel):
             self.load_prefix = self.cfg['load_prefix']
 
     def _set_optimizer(self):
+        optim_params_cfg = self.cfg.get('optim_params_cfg', None)
+        if optim_params_cfg:
+            with open(optim_params_cfg) as f:
+                _cfg = yaml.load(f, yaml.FullLoader)
+            ie_net_params = []
+            seg_net_params = []
+            for name,param in self.ie_net.named_parameters():
+                if name in _cfg['ie']:
+                    ie_net_params.append(param)
+            for name,param in self.seg_net.named_parameters():
+                if name in _cfg['seg']:
+                    seg_net_params.append(param)
+        else:
+            ie_net_params = self.ie_net.parameters()
+            seg_net_params = self.seg_net.parameters()
         params = [
-            {'params': self.ie_net.parameters()},
-            {'params': self.seg_net.parameters()}]
+            {'params': ie_net_params},
+            {'params': seg_net_params}]
+        
         optimizer = self.cfg['optimizer']
         if optimizer == 'adam':
             self.optimizer = torch.optim.Adam(
@@ -432,7 +448,9 @@ class IeSegModel(BaseModel):
             shutil.rmtree(result_dir)
         os.makedirs(result_dir)
         os.makedirs(os.path.join(result_dir, 'paired'))
-        os.makedirs(os.path.join(result_dir, 'single/predicted'))
+        os.makedirs(os.path.join(result_dir, 'pred_masks'))
+        os.makedirs(os.path.join(result_dir, 'pred_rgb_masks'))
+        os.makedirs(os.path.join(result_dir, 'pred_images'))
 
         stream_metrics = StreamSegMetrics(len(self.classes))
         batch_idx = 1
@@ -458,13 +476,23 @@ class IeSegModel(BaseModel):
             # save predicted masks
             img_names = batch['img_name']
             for pred_img,pred_mask,img_name in zip(pred_imgs, pred_masks, img_names):
-                pred_img = pred_img.detach().cpu()
-                pred_mask = pred_mask.softmax(0).argmax(0).detach().cpu().numpy()
-                img_name_noext = os.path.splitext(img_name)[0]
-                img_name = img_name_noext + '.png'
-                mask_name = img_name_noext + '_mask.png'
-                save_image(pred_img, os.path.join(result_dir, 'single/predicted', img_name))
-                cv2.imwrite(os.path.join(result_dir, 'single/predicted', mask_name), pred_mask)
+                pred_mask = pred_mask.softmax(0).argmax(0)
+                boolean_pred_mask = torch.stack(
+                    [(pred_mask == i) for i in range(len(self.classes))]
+                )
+
+                img_name = os.path.splitext(img_name)[0] + '.png'
+                save_image(pred_img, os.path.join(result_dir, 'pred_images', img_name))
+                cv2.imwrite(os.path.join(result_dir, 'pred_masks', img_name),
+                    pred_mask.detach().cpu().numpy())
+
+                pred_img = (pred_img * 255).to(torch.uint8).detach().cpu()
+                mask_alpha = self.cfg.get('mask_alpha', 0.5)
+                colors = ['#'+clz['color'] for clz in self.classes]
+                img_with_pred_mask = draw_segmentation_masks(pred_img, boolean_pred_mask,
+                    alpha=mask_alpha, colors=colors).permute(1,2,0).cpu().numpy()
+                cv2.imwrite(os.path.join(result_dir, 'pred_rgb_masks', img_name),
+                    cv2.cvtColor(img_with_pred_mask, cv2.COLOR_RGB2BGR)) 
             
             masks = self._sample_masks(inp_imgs, pred_masks, ref_masks)
             masks = cv2.cvtColor(masks, cv2.COLOR_RGB2BGR)
@@ -549,9 +577,7 @@ class IeSegModel(BaseModel):
         if mode == 'train':
             parser.add_argument('--ie_net_load_fp', type=str, default='')
             parser.add_argument('--seg_net_load_fp', type=str, default='')
-            parser.add_argument('--betas', nargs=2, type=float, default=[0.9, 0.999])
-            parser.add_argument('--momentum', type=float, default=0.0)
-            parser.add_argument('--weight_decay', type=float, default=0.0)
+            parser.add_argument('--optim_params_cfg', type=str)
             parser.add_argument('--lambda_mae', type=float, default=1.0,
                 help='weight of MAE loss')
             parser.add_argument('--l1_reduction', type=str, default='mean')
