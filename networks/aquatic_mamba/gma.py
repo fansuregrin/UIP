@@ -1,4 +1,7 @@
-"""from https://github.com/AILab-CVC/GroupMixFormer/blob/main/models/groupmixformer.py"""
+"""Group Mix Attention
+Adapt from https://github.com/AILab-CVC/GroupMixFormer/blob/main/models/groupmixformer.py"""
+from typing import Optional, Type, Union, Dict
+
 import torch
 import torch.nn as nn
 from timm.models.layers import DropPath, to_2tuple
@@ -9,11 +12,11 @@ from torch import nn, einsum
 class Mlp(nn.Module):
     """Feed-forward network (FFN, a.k.a. MLP) class."""
     def __init__(self,
-                 in_features,
-                 hidden_features = None,
-                 out_features = None,
-                 act_layer = nn.GELU,
-                 drop = 0.0):
+        in_features: int,
+        hidden_features: Optional[int] = None,
+        out_features: Optional[int] = None,
+        act_layer: Type[nn.Module] = nn.GELU,
+        drop: float = 0.0):
         super().__init__()
         out_features = out_features or in_features
         hidden_features = hidden_features or in_features
@@ -101,13 +104,17 @@ class Aggregator(nn.Module):
 
 
 class ConvRelPosEnc(nn.Module):
-    """ Convolutional relative position encoding. """
-
-    def __init__(self, Ch, h, window):
+    """Convolutional Relative Position Encoding."""
+    def __init__(self,
+        ch: int,
+        num_heads: int,
+        window: Union[int, Dict[int,int]]
+    ):
         super().__init__()
 
         if isinstance(window, int):
-            window = {window: h}  # Set the same window size for all attention heads.
+            # Set the same window size for all attention heads.
+            window = {window: num_heads}
             self.window = window
         elif isinstance(window, dict):
             self.window = window
@@ -119,19 +126,16 @@ class ConvRelPosEnc(nn.Module):
         for cur_window, cur_head_split in window.items():
             dilation = 1  # Use dilation=1 at default.
             padding_size = (cur_window + (cur_window - 1) * (dilation - 1)) // 2
-            cur_conv = nn.Conv2d(cur_head_split * Ch, cur_head_split * Ch,
-                                 kernel_size=(cur_window, cur_window),
-                                 padding=(padding_size, padding_size),
-                                 dilation=(dilation, dilation),
-                                 groups=cur_head_split * Ch,
-                                 )
+            _ch = cur_head_split * ch
+            cur_conv = nn.Conv2d(_ch, _ch, kernel_size=(cur_window, cur_window),
+                padding=(padding_size, padding_size), dilation=(dilation, dilation),
+                groups=_ch)
             self.conv_list.append(cur_conv)
             self.head_splits.append(cur_head_split)
 
-        self.channel_splits = [x * Ch for x in self.head_splits]
+        self.channel_splits = [x * ch for x in self.head_splits]
 
     def forward(self, q, v, size):
-
         B, h, N, Ch = q.shape
         H, W = size
         assert N == H * W
@@ -156,13 +160,13 @@ class ConvRelPosEnc(nn.Module):
 
 class EfficientAtt(nn.Module):
     def __init__(self,
-        dim,
-        num_heads=8,
-        qkv_bias=False,
-        qk_scale=None,
-        attn_drop=0.,
-        proj_drop=0.):
-
+        dim: int,
+        num_heads: int = 8,
+        qkv_bias: bool = False,
+        qk_scale: Optional[float] = None,
+        attn_drop: float = 0.,
+        proj_drop: float = 0.
+    ):
         super().__init__()
 
         self.num_heads = num_heads
@@ -213,7 +217,8 @@ class EfficientAtt(nn.Module):
 
 
 class ConvPosEnc(nn.Module):
-    def __init__(self, dim, k=3):
+    """Convolution Positional Encoding."""
+    def __init__(self, dim: int, k: int = 3):
         super(ConvPosEnc, self).__init__()
         self.proj = nn.Conv2d(dim, dim, k, 1, k // 2, groups=dim)
 
@@ -250,13 +255,15 @@ class ConvStem(nn.Module):
 
 
 class SeparableConv2d(nn.Module):
+    """Depthwise Separable Convolution."""
     def __init__(self, in_channels, out_channels, kernel_size=1, stride=1,
                  padding=0, dilation=1, bias=False):
-        super(SeparableConv2d, self).__init__()
+        super().__init__()
 
         self.conv1 = nn.Conv2d(in_channels, in_channels, kernel_size, stride,
-                               padding, dilation, groups=in_channels, bias=bias)
-        self.pointwise_conv = nn.Conv2d(in_channels, out_channels, 1, 1, 0, 1, 1, bias=bias)
+            padding, dilation, groups=in_channels, bias=bias)
+        self.pointwise_conv = nn.Conv2d(in_channels, out_channels, 1,
+            stride=1, padding=0, dilation=1, groups=1, bias=bias)
 
     def forward(self, x):
         x = self.pointwise_conv(self.conv1(x))
@@ -286,21 +293,31 @@ class PatchEmbedLayer(nn.Module):
 
 
 class GmaBlock(nn.Module):
-    def __init__(self, dim, num_heads, mlp_ratio=4., qkv_bias=False, qk_scale=None,
-                 drop=0., attn_drop=0., drop_path_rate=0., act_layer=nn.GELU,
-                 norm_layer=nn.LayerNorm
-                 ):
+    """Group Mix Attention Block."""
+    def __init__(self,
+        dim: int,
+        num_heads: int,
+        mlp_ratio: float = 4.,
+        qkv_bias: bool = False,
+        qk_scale: Optional[float] = None,
+        drop: float = 0.,
+        attn_drop: float = 0.,
+        drop_path_rate: float = 0.,
+        act_layer: Type[nn.Module] = nn.GELU,
+        norm_layer: Type[nn.Module] = nn.LayerNorm
+    ):
         super().__init__()
         self.cpe = ConvPosEnc(dim=dim, k=3)
         self.norm1 = norm_layer(dim)
         self.att = EfficientAtt(dim, num_heads=num_heads, qkv_bias=qkv_bias,
-                                qk_scale=qk_scale, attn_drop=attn_drop, proj_drop=drop,)
-        self.drop_path_rate = DropPath(drop_path_rate) if drop_path_rate > 0. else nn.Identity()
+            qk_scale=qk_scale, attn_drop=attn_drop, proj_drop=drop)
+        self.drop_path_rate = DropPath(drop_path_rate) if drop_path_rate > 0. \
+            else nn.Identity()
 
         self.norm2 = norm_layer(dim)
         mlp_hidden_dim = int(dim * mlp_ratio)
         self.mlp = Mlp(in_features=dim, hidden_features=mlp_hidden_dim, act_layer=act_layer,
-                       drop=drop)
+            drop=drop)
 
     def forward(self, x_input, size):
         x = self.cpe(x_input, size)

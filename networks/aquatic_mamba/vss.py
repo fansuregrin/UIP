@@ -203,7 +203,7 @@ class SS2D(nn.Module):
 class VssBlock(nn.Module):
     def __init__(
         self,
-        hidden_dim: int = 0,
+        hidden_dim: int,
         drop_path: float = 0,
         norm_layer: Callable[..., torch.nn.Module] = partial(nn.LayerNorm, eps=1e-6),
         attn_drop_rate: float = 0,

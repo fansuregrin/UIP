@@ -1,4 +1,5 @@
-import math
+from typing import Tuple, Union, Optional, Type
+
 import torch
 import torch.nn.functional as F
 from torch import nn
@@ -14,17 +15,22 @@ from utils import get_norm_layer
 
 
 class PatchEmbed2D(nn.Module):
-    r""" Image to Patch Embedding
-
-    Args:
-        img_size (int): Image size.  Default: 224.
-        patch_size (int): Patch token size. Default: 4.
-        in_chans (int): Number of input image channels. Default: 3.
-        embed_dim (int): Number of linear projection output channels. Default: 96.
-        norm_layer (nn.Module, optional): Normalization layer. Default: None
-    """
-
-    def __init__(self, img_size=224, patch_size=4, in_chans=3, embed_dim=96, norm_layer=None):
+    r"""Image to Patch Embedding."""
+    def __init__(self,
+        img_size: Union[int, Tuple[int,int]] = 224,
+        patch_size: Union[int, Tuple[int,int]] = 4,
+        in_chans: int = 3,
+        embed_dim: int = 96,
+        norm_layer: Optional[Type[nn.Module]] = None):
+        """
+        Args:
+            img_size: Image size.  Default: 224.
+            patch_size: Patch token size. Default: 4.
+            in_chans: Number of input image channels. Default: 3.
+            embed_dim: Number of linear projection output channels. Default: 96.
+            norm_layer: Normalization layer. Default: None
+        """
+        
         super().__init__()
         img_size = to_2tuple(img_size)
         patch_size = to_2tuple(patch_size)
@@ -62,14 +68,15 @@ class PatchEmbed2D(nn.Module):
     
 
 class PatchMerging2D(nn.Module):
-    r""" Patch Merging Layer.
-    Args:
-        input_resolution (tuple[int]): Resolution of input feature.
-        dim (int): Number of input channels.
-        norm_layer (nn.Module, optional): Normalization layer.  Default: nn.LayerNorm
-    """
+    r"""Patch Merging Layer."""
 
-    def __init__(self, dim, norm_layer=nn.LayerNorm):
+    def __init__(self, dim: int, norm_layer: Type[nn.Module] = nn.LayerNorm):
+        """
+        Args:
+            input_resolution: Resolution of input feature.
+            dim: Number of input channels.
+            norm_layer: Normalization layer. Default: nn.LayerNorm
+        """
         super().__init__()
         self.dim = dim
         self.reduction = nn.Linear(4 * dim, 2 * dim, bias=False)
@@ -105,7 +112,10 @@ class PatchMerging2D(nn.Module):
     
 
 class PatchExpand2D(nn.Module):
-    def __init__(self, dim, dim_scale=2, norm_layer=nn.LayerNorm):
+    def __init__(self,
+        dim: int,
+        dim_scale: int = 2,
+        norm_layer: Type[nn.Module] = nn.LayerNorm):
         super().__init__()
         self.dim = dim*2
         self.dim_scale = dim_scale
@@ -116,14 +126,18 @@ class PatchExpand2D(nn.Module):
         B, H, W, C = x.shape
         x = self.expand(x)
 
-        x = rearrange(x, 'b h w (p1 p2 c)-> b (h p1) (w p2) c', p1=self.dim_scale, p2=self.dim_scale, c=C//self.dim_scale)
+        x = rearrange(x, 'b h w (p1 p2 c)-> b (h p1) (w p2) c', p1=self.dim_scale,
+            p2=self.dim_scale, c=C//self.dim_scale)
         x= self.norm(x)
 
         return x
     
 
 class FinalPatchExpand2D(nn.Module):
-    def __init__(self, dim, dim_scale=4, norm_layer=nn.LayerNorm):
+    def __init__(self,
+        dim: int,
+        dim_scale: int = 4,
+        norm_layer: Type[nn.Module] = nn.LayerNorm):
         super().__init__()
         self.dim = dim
         self.dim_scale = dim_scale
