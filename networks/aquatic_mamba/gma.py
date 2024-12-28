@@ -187,7 +187,7 @@ class EfficientAtt(nn.Module):
         if hs3 == 0:
             hs3 = 1
         w_ = {3: hs3, 5: hs5, 7: num_heads - hs3 - hs5}
-        self.crpe = ConvRelPosEnc(Ch=trans_dim // num_heads, h=num_heads, window=w_)
+        self.crpe = ConvRelPosEnc(trans_dim // num_heads, num_heads, window=w_)
 
     def forward(self, x, size):
         B, N, C = x.shape
