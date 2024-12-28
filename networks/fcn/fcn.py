@@ -3,8 +3,11 @@ from torchvision.models._utils import IntermediateLayerGetter
 from torchvision.models.resnet import (
     resnet18, resnet34
 )
+from torchvision.models.mobilenetv3 import (
+    mobilenet_v3_small, mobilenet_v3_large
+)
 from torchvision.models.segmentation.fcn import (
-    fcn_resnet50, fcn_resnet101, FCNHead, _fcn_resnet
+    fcn_resnet50, fcn_resnet101, FCNHead
 )
 from torchvision.models.segmentation.fcn import FCN as _FCN
 
@@ -34,6 +37,13 @@ class FCN(nn.Module):
             _backbone = IntermediateLayerGetter(_backbone, return_layers=return_layers)
             _classifier = FCNHead(512, num_classes)
             self.fcn = _FCN(_backbone, _classifier)
+        elif backbone == 'mobilenet_v3_small':
+            _backbone = mobilenet_v3_small(weights=weights_backbone, **kwargs).features
+            out_pos = len(_backbone) - 1
+            out_inplanes = _backbone[out_pos].out_channels
+            return_layers = {str(out_pos): "out"}
+            _backbone = IntermediateLayerGetter(_backbone, return_layers=return_layers)
+            self.fcn = _FCN(_backbone, FCNHead(out_inplanes, num_classes))
         else:
             raise NotImplementedError()
         

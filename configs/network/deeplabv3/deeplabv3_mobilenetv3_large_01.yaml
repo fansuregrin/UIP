@@ -1,0 +1,5 @@
+name: deeplabv3
+num_classes: 8
+backbone: mobilenet_v3_large
+use_pretrained: true
+use_pretrained_backbone: True

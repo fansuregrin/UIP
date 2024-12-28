@@ -1,0 +1,5 @@
+name: fcn
+num_classes: 8
+backbone: mobilenet_v3_small
+use_pretrained: false
+use_pretrained_backbone: true
