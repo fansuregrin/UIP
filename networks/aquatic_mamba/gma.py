@@ -234,26 +234,6 @@ class ConvPosEnc(nn.Module):
         return x
 
 
-class ConvStem(nn.Module):
-    """ Image to Patch Embedding """
-    def __init__(self, in_dim=3, embedding_dims=64):
-        super().__init__()
-        mid_dim = embedding_dims // 2
-
-        self.proj1 = nn.Conv2d(in_dim, mid_dim, kernel_size=3, stride=2, padding=1)
-        self.norm1 = nn.BatchNorm2d(mid_dim)
-        self.act1 = nn.Hardswish()
-
-        self.proj2 = nn.Conv2d(mid_dim, embedding_dims, kernel_size=3, stride=2, padding=1)
-        self.norm2 = nn.BatchNorm2d(embedding_dims)
-        self.act2 = nn.Hardswish()
-
-    def forward(self, x):
-        x = self.act1(self.norm1(self.proj1(x)))
-        x = self.act2(self.norm2(self.proj2(x)))
-        return x
-
-
 class SeparableConv2d(nn.Module):
     """Depthwise Separable Convolution."""
     def __init__(self, in_channels, out_channels, kernel_size=1, stride=1,
@@ -268,28 +248,6 @@ class SeparableConv2d(nn.Module):
     def forward(self, x):
         x = self.pointwise_conv(self.conv1(x))
         return x
-
-
-class PatchEmbedLayer(nn.Module):
-    def __init__(self, patch_size=16, in_dim=3, embedding_dims=768, is_first_layer=False):
-        super().__init__()
-        if is_first_layer:
-            patch_size = 1
-            in_dim = embedding_dims
-
-        patch_size = to_2tuple(patch_size)
-        self.patch_size = patch_size
-
-        self.proj = SeparableConv2d(in_dim, embedding_dims, 3, patch_size, 1)
-        self.norm = nn.BatchNorm2d(embedding_dims)
-        self.act = nn.Hardswish()
-
-    def forward(self, x):
-        _, _, H, W = x.shape
-        out_H, out_W = H // self.patch_size[0], W // self.patch_size[1]
-        x = self.act(self.norm(self.proj(x)))
-        x = x.flatten(2).transpose(1, 2)
-        return x, (out_H, out_W)
 
 
 class GmaBlock(nn.Module):
