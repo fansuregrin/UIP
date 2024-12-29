@@ -3,6 +3,7 @@ import time
 import sys
 import random
 import shutil
+import re
 from argparse import ArgumentParser
 
 import torch
@@ -117,7 +118,23 @@ class ImgEnhanceModel(BaseModel):
         self.network = create_network(self.net_cfg).to(self.device)
 
     def _set_optimizer(self):
-        params = self.network.parameters()
+        optim_params_cfg = self.cfg.get('optim_params_cfg', None)
+        if optim_params_cfg:
+            params = []
+            with open(optim_params_cfg) as f:
+                _cfg = yaml.load(f, yaml.FullLoader)
+            include_patterns = _cfg.get('include_re', [])
+            include_patterns_compiled = []
+            if include_patterns:
+                include_patterns_compiled = [re.compile(p) for p in include_patterns]
+            for name,param in self.network.named_parameters():
+                if name in _cfg['include']:
+                    params.append(param)
+                for pattern in include_patterns_compiled:
+                    if re.match(pattern, name):
+                        params.append(param)
+        else:
+            params = self.network.parameters()
         optimizer = self.cfg['optimizer']
         if optimizer == 'adam':
             self.optimizer = torch.optim.Adam(params, lr=self.cfg['lr'],

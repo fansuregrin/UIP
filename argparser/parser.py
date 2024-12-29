@@ -64,6 +64,8 @@ class TrainArgParser(BaseArgParser):
             help='the prefix string of the filename of the weights to be loaded')
         self.parser.add_argument('--save_prefix', type=str, default='',
             help='the prefix string of the filename that needs to save the weights')
+        self.parser.add_argument('--optim_params_cfg', type=str,
+            help='path to config file for paramaters to be optimized')
         self.parser.add_argument('--optimizer', type=str, default='adam',
             help='which optimizer to use')
         self.parser.add_argument('--lr', type=float, default=0.001,
