@@ -16,4 +16,5 @@ norm_layer: 'layer_norm'
 patch_norm: true
 use_ape: true
 use_gma: true
+use_aem: true
 gma_num_heads: 8
