@@ -48,7 +48,6 @@ train:
   trans_opt:
     additional_targets:
       ref: image
-      mask: image
     transforms:
       - name: 'resize'
         width: 256
@@ -63,7 +62,6 @@ val:
   trans_opt:
     additional_targets:
       ref: image
-      mask: image
     transforms:
       - name: 'resize'
         width: 256
@@ -78,7 +76,6 @@ test:
   trans_opt:
     additional_targets:
       ref: image
-      mask: image
     transforms:
       - name: 'resize'
         width: 256

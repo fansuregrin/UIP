@@ -79,6 +79,9 @@ test: &test
 train_erd_enhanced:
   <<: *train
   image_dir: 'erd_enhanced'
+train_aqmamba_enhanced:
+  <<: *train
+  image_dir: 'aqmamba_enhanced'
 train_sguie_enhanced:
   <<: *train
   image_dir: 'sguie_enhanced'
@@ -97,6 +100,9 @@ test_train:
 test_erd_enhanced:
   <<: *test
   image_dir: 'erd_enhanced'
+test_aqmamba_enhanced:
+  <<: *test
+  image_dir: 'aqmamba_enhanced'
 test_sguie_enhanced:
   <<: *test
   image_dir: 'sguie_enhanced'
