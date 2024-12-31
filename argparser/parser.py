@@ -56,6 +56,8 @@ class TrainArgParser(BaseArgParser):
         super()._add_common_args()
         self.parser.add_argument('--mode', type=str, default='train', choices=['train'])
         self.parser.add_argument('--lr_scheduler_cfg', type=str, default='configs/lr_scheduler/none.yaml')
+        self.parser.add_argument('--resume', action='store_true',
+            help='resume training from specified epoch')
         self.parser.add_argument('--start_epoch', type=int, default=0, help='which epoch to start from')
         self.parser.add_argument('--start_iteration', type=int, default=0, help='which iteration to start from')
         self.parser.add_argument('--num_epochs', type=int, default=50, help='number of epochs for training')
@@ -64,6 +66,8 @@ class TrainArgParser(BaseArgParser):
             help='the prefix string of the filename of the weights to be loaded')
         self.parser.add_argument('--save_prefix', type=str, default='',
             help='the prefix string of the filename that needs to save the weights')
+        self.parser.add_argument('--network_state_fp', type=str,
+            help='network state for finetuning')
         self.parser.add_argument('--optim_params_cfg', type=str,
             help='path to config file for paramaters to be optimized')
         self.parser.add_argument('--optimizer', type=str, default='adam',

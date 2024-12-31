@@ -88,14 +88,17 @@ class ImgEnhanceModel(BaseModel):
             self.test_name = self.cfg['test_name']
             self.load_prefix = self.cfg['load_prefix']
         
-    def load_network_state(self, state_name: str):
-        state_path = os.path.join(self.network_state_dir, state_name)
-        self.network.load_state_dict(torch.load(state_path, weights_only=True))
+    def load_network_state(self, state_name: str = None):
+        if state_name:
+            state_fp = os.path.join(self.network_state_dir, state_name)
+        else:
+            state_fp = self.cfg.get('network_state_fp', None)
+        self.network.load_state_dict(torch.load(state_fp, weights_only=True))
         if self.logger:
             self.logger.info('Loaded network weights from {}.'.format(
-                state_path
+                state_fp
             ))
-
+    
     def load_optimizer_state(self, state_name: str):
         state_path = os.path.join(self.optimizer_state_dir, state_name)
         self.optimizer.load_state_dict(torch.load(state_path, weights_only=True))
@@ -237,14 +240,22 @@ class ImgEnhanceModel(BaseModel):
             self.logger.info(f"{k}: {v}")
         self.logger.info("network config details:")
         for k, v in self.net_cfg.items():
-            self.logger.info(f"  {k}: {v}")
-        self.logger.info("lr_scheduler config details:")
-        for k, v in self.lr_scheduler_cfg.items():
-            self.logger.info(f"  {k}: {v}")
+            self.logger.info(f"  {k}: {pformat(v)}")
+        self.logger.info("lr_scheduler config details: {}".format(
+            pformat(self.lr_scheduler_cfg)))
         if self.optim_params_cfg:
             self.logger.info("optimized parameters config details: {}".format(
-                pformat(self.optim_params_cfg)
-            ))
+                pformat(self.optim_params_cfg)))
+
+    def _resume_state(self, epoch):
+        load_prefix = self.cfg.get('load_prefix', None)
+        if load_prefix:
+            state_name = f'{load_prefix}_{epoch}.pth'
+        else:
+            state_name = f'{epoch}.pth'
+        self.load_network_state(state_name)
+        self.load_optimizer_state(state_name)
+        self.load_lr_scheduler_state(state_name)
 
     def train(self):
         assert self.mode == 'train', f"The mode must be 'train', but got {self.mode}"
@@ -252,18 +263,12 @@ class ImgEnhanceModel(BaseModel):
         seed_everything(self.seed)
         self._log_training_details()
         
-        if self.start_epoch > 0:
-            load_prefix = self.cfg.get('load_prefix', None)
-            if load_prefix:
-                state_name = f'{load_prefix}_{self.start_epoch-1}.pth'
-                self.load_network_state(state_name)
-                self.load_optimizer_state(state_name)
-                self.load_lr_scheduler_state(state_name)
-            else:
-                state_name = f'{self.start_epoch-1}.pth'
-                self.load_network_state(state_name)
-                self.load_optimizer_state(state_name)
-                self.load_lr_scheduler_state(state_name)
+        if self.cfg['resume'] and self.start_epoch > 0:
+            # resume training state from specified epoch
+            self._resume_state(self.start_epoch - 1)
+        elif self.start_epoch > 0:
+            # finetune
+            self.load_network_state()
         
         iteration_index = self.start_iteration
         for epoch in range(self.start_epoch, self.start_epoch + self.num_epochs):
