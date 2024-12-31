@@ -166,15 +166,16 @@ def gen_comparison3(
 
 
 def gen_comparison_with_local_mag(
-        img_name_list,
-        local_areas,
-        img_dirs,
-        title_cfg=DEFAULT_TITLE_CFG,
-        expected_size=(256, 256),
-        auto_nb='abc',
-        outline_color=(255,255,0),
-        outline_width=3,
-        tight_layout_cfg=dict()):
+    img_name_list,
+    local_areas,
+    img_dirs,
+    title_cfg=DEFAULT_TITLE_CFG,
+    expected_size=(256, 256),
+    auto_nb='abc',
+    outline_color=(255,255,0),
+    outline_width=3,
+    tight_layout_cfg=dict()
+):
     num_rows = len(img_name_list)
     num_cols = len(img_dirs)
 
@@ -215,15 +216,16 @@ def gen_comparison_with_local_mag(
 
 
 def gen_comparison_with_local_mag2(
-        img_name,
-        local_area,
-        img_dirs,
-        title_cfg=DEFAULT_TITLE_CFG,
-        expected_size=(256, 256),
-        auto_nb='abc',
-        outline_color=(255,255,0),
-        outline_width=3,
-        tight_layout_cfg=dict()):
+    img_name,
+    local_area,
+    img_dirs,
+    title_cfg=DEFAULT_TITLE_CFG,
+    expected_size=(256, 256),
+    auto_nb='abc',
+    outline_color=(255,255,0),
+    outline_width=3,
+    tight_layout_cfg=dict()
+):
     num = len(img_dirs)
     num_rows = math.floor(math.sqrt(num))
     num_cols = math.ceil(num/num_rows)
@@ -261,15 +263,16 @@ def gen_comparison_with_local_mag2(
 
 
 def gen_comparison_with_local_mag3(
-        img_name_list,
-        local_areas,
-        img_dirs,
-        title_cfg=DEFAULT_TITLE_CFG,
-        auto_nb='abc',
-        expected_size=(256, 256),
-        outline_color=(255,255,0),
-        outline_width=3,
-        tight_layout_cfg=dict()):
+    img_name_list,
+    local_areas,
+    img_dirs,
+    title_cfg=DEFAULT_TITLE_CFG,
+    auto_nb='abc',
+    expected_size=(256, 256),
+    outline_color=(255,255,0),
+    outline_width=3,
+    tight_layout_cfg=dict()
+):
     num_rows = len(img_name_list)
     num_cols = len(img_dirs)
 
@@ -313,24 +316,23 @@ def gen_comparison_with_local_mag3(
 
 
 def gen_comparison_with_local_edges(
-        img_name_list,
-        local_areas,
-        img_dirs,
-        title_cfg=DEFAULT_TITLE_CFG,
-        expected_size=(256, 256),
-        auto_nb='abc',
-        outline_color=(255,255,0),
-        outline_width=3,
-        tight_layout_cfg=dict()):
+    img_name_list,
+    local_areas,
+    img_dirs,
+    title_cfg=DEFAULT_TITLE_CFG,
+    expected_size=(256, 256),
+    auto_nb='abc',
+    outline_color=(255,255,0),
+    outline_width=3,
+    tight_layout_cfg=dict()
+):
     num_rows = len(img_name_list)
     num_cols = len(img_dirs)
 
     fig_width = num_cols * (2*expected_size[0]/100*(1+0.1)) 
     fig_height = num_rows * (expected_size[1]/100*(1+0.1))
-    fig, axes = plt.subplots(num_rows, num_cols, figsize=(fig_width, fig_height))
-
-    if not isinstance(img_dirs, OrderedDict):
-        img_dirs = OrderedDict(img_dirs)
+    fig = plt.figure(figsize=(fig_width, fig_height))
+    gs0 = gridspec.GridSpec(num_rows, num_cols, figure=fig)
 
     for i in range(num_rows):
         for j, label in enumerate(img_dirs):
@@ -338,6 +340,7 @@ def gen_comparison_with_local_edges(
             img = Image.open(img_fp)
             if img.size != expected_size:
                 img = img.resize(expected_size)
+            
             draw = ImageDraw.Draw(img)
             local_mag = img.crop(local_areas[i])
             draw.rectangle(local_areas[i], outline=outline_color, width=outline_width)
@@ -352,27 +355,31 @@ def gen_comparison_with_local_edges(
             draw_local.rectangle(((0,0), local_edges.size), outline=outline_color, width=3)
             local_edges = np.asarray(local_edges, dtype=np.uint8)
             full_img = np.concatenate((img, local_edges), 1)
-            ax = axes[i, j]
+    
+            ax = fig.add_subplot(gs0[i, j])
             ax.axis('off')
             if i == num_rows-1:
                 if SERIAL_NUMBERS.get(auto_nb, None):
                     label = f'({SERIAL_NUMBERS[auto_nb][j]}) {label}'
                 ax.set_title(label, **title_cfg)
             ax.imshow(full_img)
+    
     fig.tight_layout(**tight_layout_cfg)
+    
     return fig
 
 
 def gen_comparison_with_local_edges2(
-        img_name_list,
-        local_areas,
-        img_dirs,
-        title_cfg=DEFAULT_TITLE_CFG,
-        expected_size=(256, 256),
-        auto_nb='abc',
-        outline_color=(255,255,0),
-        outline_width=3,
-        tight_layout_cfg=dict()):
+    img_name_list,
+    local_areas,
+    img_dirs,
+    title_cfg=DEFAULT_TITLE_CFG,
+    expected_size=(256, 256),
+    auto_nb='abc',
+    outline_color=(255,255,0),
+    outline_width=3,
+    tight_layout_cfg=dict()
+):
     num_rows = len(img_name_list)
     num_cols = len(img_dirs)
 
