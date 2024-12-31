@@ -4,6 +4,7 @@ import sys
 import random
 import shutil
 import re
+from pprint import pformat
 from argparse import ArgumentParser
 
 import torch
@@ -29,7 +30,7 @@ from .base_model import BaseModel
 from losses import (
     L1CharbonnierLoss, FourDomainLoss, 
     EdgeLoss, FourDomainLoss2, FourDomainLoss3,
-    S3IM, ContrastLoss
+    S3IM
 )
 from models import _models
 
@@ -117,12 +118,13 @@ class ImgEnhanceModel(BaseModel):
         self.net_name = self.net_cfg['name']
         self.network = create_network(self.net_cfg).to(self.device)
 
-    def _set_optimizer(self):
-        optim_params_cfg = self.cfg.get('optim_params_cfg', None)
-        if optim_params_cfg:
+    def _get_optim_params(self):
+        cfg_fp = self.cfg.get('optim_params_cfg', None)
+        if cfg_fp:
             params = []
-            with open(optim_params_cfg) as f:
+            with open(cfg_fp) as f:
                 _cfg = yaml.load(f, yaml.FullLoader)
+                self.optim_params_cfg = _cfg
             include_patterns = _cfg.get('include_re', [])
             include_patterns_compiled = []
             if include_patterns:
@@ -135,6 +137,11 @@ class ImgEnhanceModel(BaseModel):
                         params.append(param)
         else:
             params = self.network.parameters()
+
+        return params
+
+    def _set_optimizer(self):
+        params = self._get_optim_params()
         optimizer = self.cfg['optimizer']
         if optimizer == 'adam':
             self.optimizer = torch.optim.Adam(params, lr=self.cfg['lr'],
@@ -234,6 +241,10 @@ class ImgEnhanceModel(BaseModel):
         self.logger.info("lr_scheduler config details:")
         for k, v in self.lr_scheduler_cfg.items():
             self.logger.info(f"  {k}: {v}")
+        if self.optim_params_cfg:
+            self.logger.info("optimized parameters config details: {}".format(
+                pformat(self.optim_params_cfg)
+            ))
 
     def train(self):
         assert self.mode == 'train', f"The mode must be 'train', but got {self.mode}"
@@ -830,9 +841,6 @@ class AquaticMamba(ImgEnhanceModel):
         self.mae_loss_fn = nn.L1Loss(reduction=self.cfg['l1_reduction']).to(self.device)
         self.ssim_win_size = self.cfg.get('ssim_win_size', 11)
         self.ssim_loss_fn = SSIMLoss(self.ssim_win_size).to(self.device)
-        self.use_contrast_loss = self.cfg.get('use_constrast_loss', False)
-        if self.use_contrast_loss:
-            self.contrast_loss_fn = ContrastLoss().to(self.device)
         self.lambda_mae  = self.cfg.get('lambda_mae', 1.0)
         self.lambda_ssim = self.cfg.get('lambda_ssim', 1.0)
 
@@ -841,16 +849,9 @@ class AquaticMamba(ImgEnhanceModel):
         loss['mae'] = self.mae_loss_fn(pred_imgs, ref_imgs)
         loss['ssim'] = self.ssim_loss_fn(pred_imgs, ref_imgs)
         loss['total'] = self.lambda_mae * loss['mae'] + self.lambda_ssim * loss['ssim']
-        if self.use_contrast_loss:
-            loss['contrast'] = self.contrast_loss_fn(pred_imgs, ref_imgs)
-            loss['total'] += loss['contrast']
 
     def _set_optimizer(self):
-        params = [{'params': self.network.parameters()}, ]
-        if self.use_contrast_loss:
-            params.append({'params': self.contrast_loss_fn.parameters()})
-        if len(params) == 1:
-            params = self.network.parameters()
+        params = self._get_optim_params()
         optimizer = self.cfg['optimizer']
         if optimizer == 'adam':
             self.optimizer = torch.optim.Adam(params, lr=self.cfg['lr'],
@@ -866,7 +867,6 @@ class AquaticMamba(ImgEnhanceModel):
     @staticmethod
     def modify_args(parser, mode):
         if mode == 'train':
-            parser.add_argument("--use_contrast_loss", action='store_true', help="whether use contrast loss function")
             parser.add_argument("--lambda_mae", type=float, default=1.0, help="weight of MAE loss")
             parser.add_argument("--lambda_ssim", type=float, default=1.0, help="weight of SSIM loss")
             parser.add_argument("--l1_reduction", type=str, default='mean')
