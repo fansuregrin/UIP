@@ -123,6 +123,7 @@ class ImgEnhanceModel(BaseModel):
 
     def _get_optim_params(self):
         cfg_fp = self.cfg.get('optim_params_cfg', None)
+        self.optim_params_cfg = None
         if cfg_fp:
             params = []
             with open(cfg_fp) as f:
@@ -205,14 +206,17 @@ class ImgEnhanceModel(BaseModel):
         }
         if self.mode == 'train':
             _train_ds = self.cfg.get('train_ds', 'train')
-            train_ds = create_dataset(ds_cfg[_train_ds])
+            self.train_ds_cfg = ds_cfg[_train_ds]
+            train_ds = create_dataset(self.train_ds_cfg)
             _val_ds = self.cfg.get('val_ds', 'val')
-            val_ds = create_dataset(ds_cfg[_val_ds])
+            self.val_ds_cfg = ds_cfg[_val_ds]
+            val_ds = create_dataset(self.val_ds_cfg)
             self.train_dl = create_dataloader(train_ds, dl_cfg)
             self.val_dl = create_dataloader(val_ds, dl_cfg)
         elif self.mode == 'test':
             _test_ds = self.cfg.get('test_ds', 'test')
-            test_ds = create_dataset(ds_cfg[_test_ds])
+            self.test_ds_cfg = ds_cfg[_test_ds]
+            test_ds = create_dataset(self.test_ds_cfg)
             dl_cfg['shuffle'] = False
             self.test_dl = create_dataloader(test_ds, dl_cfg)
         else:
@@ -232,20 +236,31 @@ class ImgEnhanceModel(BaseModel):
         metrics['psnr'] = psnr(pred_imgs, ref_imgs, 1.0)
         metrics['ssim'] = ssim(pred_imgs, ref_imgs, 11).mean()
 
-    def _log_training_details(self):
+    def _log_model_cfg(self):
         if self.logger is None: return
 
-        self.logger.info(f"Starting Training Process...")
         for k, v in self.cfg.items():
             self.logger.info(f"{k}: {v}")
         self.logger.info("network config details:")
         for k, v in self.net_cfg.items():
             self.logger.info(f"  {k}: {pformat(v)}")
-        self.logger.info("lr_scheduler config details: {}".format(
-            pformat(self.lr_scheduler_cfg)))
-        if self.optim_params_cfg:
-            self.logger.info("optimized parameters config details: {}".format(
-                pformat(self.optim_params_cfg)))
+        
+        if self.mode == 'train':
+            self.logger.info("lr_scheduler config: {}".format(
+                pformat(self.lr_scheduler_cfg)))
+            if self.optim_params_cfg:
+                self.logger.info("optimized parameters config: {}".format(
+                    pformat(self.optim_params_cfg)))
+            self.logger.info("train ds config: {}".format(
+                pformat(self.train_ds_cfg)
+            ))
+            self.logger.info("val ds config: {}".format(
+                pformat(self.val_ds_cfg)
+            ))
+        elif self.mode == 'test':
+            self.logger.info("test ds config: {}".format(
+                pformat(self.test_ds_cfg)
+            ))
 
     def _resume_state(self, epoch):
         load_prefix = self.cfg.get('load_prefix', None)
@@ -261,16 +276,19 @@ class ImgEnhanceModel(BaseModel):
         assert self.mode == 'train', f"The mode must be 'train', but got {self.mode}"
         
         seed_everything(self.seed)
-        self._log_training_details()
+        self._log_model_cfg()
         
         if self.cfg['resume'] and self.start_epoch > 0:
             # resume training state from specified epoch
             self._resume_state(self.start_epoch - 1)
-        elif self.start_epoch > 0:
+        elif self.cfg['network_state_fp']:
             # finetune
             self.load_network_state()
         
+        if self.logger:
+            self.logger.info(f"Starting Training Process...")
         iteration_index = self.start_iteration
+        last_epoch = self.start_epoch + self.num_epochs - 1
         for epoch in range(self.start_epoch, self.start_epoch + self.num_epochs):
             for i, batch in enumerate(self.train_dl):
                 # train one batch
@@ -286,14 +304,19 @@ class ImgEnhanceModel(BaseModel):
                             "[iteration: {:d}, lr: {:f}] [Epoch {:d}/{:d}, batch {:d}/{:d}] "
                             "[train_loss: {:.3f}, val_loss: {:.3f}]".format(
                                 iteration_index, self.optimizer.param_groups[0]['lr'],
-                                epoch, self.start_epoch + self.num_epochs-1, i, len(self.train_dl)-1,
-                                self.train_loss['total'].item(), self.val_loss['total'].item()
+                                epoch, last_epoch, i, len(self.train_dl)-1,
+                                self.train_loss['total'].item(),
+                                self.val_loss['total'].item()
                         ))
                 iteration_index += 1
             # adjust lr
             self.adjust_lr()
-            # save model weights
             if (epoch % self.ckpt_interval == 0) or (epoch == self.start_epoch + self.num_epochs-1):
+                if self.logger:
+                    self.logger.info(
+                        '[Iteration: {:d}, Epoch {:d}/{:d}] save training state'.format(
+                        iteration_index, epoch, last_epoch
+                    ))
                 self.save_network_weights(epoch)
                 self.save_optimizer_state(epoch)
                 self.save_lr_scheduler_state(epoch)
@@ -385,22 +408,14 @@ class ImgEnhanceModel(BaseModel):
             cv2.imwrite(os.path.join(self.sample_dir, f'{iteration:06d}.png'), full_img)
     
     def test(self):
+        self._log_model_cfg()
+        if self.logger:
+            self.logger.info(f"Starting Test Process...")
         for epoch in self.epochs:
             self.test_one_epoch(epoch, self.test_name, self.load_prefix)
     
     def test_one_epoch(self, epoch: int, test_name: str, load_prefix=None):
         assert self.mode == 'test', f"The mode must be 'test', but got {self.mode}"
-
-        if not self.logger is None:
-            self.logger.info(f"Starting Test Process...")
-            self.logger.info(f"model_name: {self.model_name}")
-            self.logger.info(f"mode: {self.mode}")
-            self.logger.info(f"device: {self.device}")
-            self.logger.info(f"checkpoint_dir: {self.checkpoint_dir}")
-            self.logger.info(f"net_cfg: {self.cfg['net_cfg']}")
-            for k, v in self.net_cfg.items():
-                self.logger.info(f"  {k}: {v}")
-
         
         weights_name = f"{load_prefix}_{epoch}" if load_prefix else f"{epoch}"
         self.load_network_state(f"{weights_name}.pth")
