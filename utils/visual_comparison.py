@@ -2,6 +2,7 @@ import os
 import random
 from glob import glob
 from collections import OrderedDict
+from typing import List, Dict, Any, Tuple, Optional
 import math
 
 import matplotlib.pyplot as plt
@@ -25,14 +26,30 @@ DEFAULT_TITLE_CFG = {
 }
 
 
+def _check_fp(root_dir: str, filename: str, fmts: Optional[List[str]] = None):
+    fp = os.path.join(root_dir, filename)
+    
+    if not os.path.exists(fp) and fmts:
+        for fmt in fmts:
+            fp = os.path.join(root_dir, f'{filename}.{fmt}')
+            if os.path.exists(fp): break
+    
+    if not os.path.exists(fp):
+        raise FileNotFoundError(f"The specified file does not exist: '{fp}'")
+
+    return fp
+
+
 def gen_comparison(
-        img_name_list,
-        img_dirs,
-        title_cfg=DEFAULT_TITLE_CFG,
-        expected_size=(256, 256),
-        auto_nb='abc',
-        tight_layout_cfg=dict(),
-        **kwargs):
+    img_name_list: List[str],
+    img_dirs: Dict[str, str],
+    title_cfg: Dict[str, Any] = DEFAULT_TITLE_CFG,
+    expected_size: Tuple[int, int] = (256, 256),
+    auto_nb: str = 'abc',
+    tight_layout_cfg: Dict = dict(),
+    **kwargs
+):
+    """Multiple case comparisons of multiple images."""
     num_rows = len(img_name_list)
     num_cols = len(img_dirs)
 
@@ -43,7 +60,8 @@ def gen_comparison(
 
     for i in range(num_rows):
         for j, label in enumerate(img_dirs):
-            img_fp = os.path.join(img_dirs[label], img_name_list[i])
+            img_fp = _check_fp(img_dirs[label], img_name_list[i],
+                fmts=kwargs.get('fmts', None))
             img = Image.open(img_fp)
             if img.mode != 'RGB':
                 img = img.convert('RGB')
@@ -63,13 +81,16 @@ def gen_comparison(
 
 
 def gen_comparison2(
-        img_name,
-        img_dirs,
-        title_cfg=DEFAULT_TITLE_CFG,
-        n_row=None,
-        expected_size=(256, 256),
-        auto_nb='abc',
-        tight_layout_cfg=dict()):
+    img_name: str,
+    img_dirs: Dict[str, str],
+    title_cfg: Dict[str, Any] = DEFAULT_TITLE_CFG,
+    n_row: int = None,
+    expected_size: Tuple[int, int] = (256, 256),
+    auto_nb: str = 'abc',
+    tight_layout_cfg: Dict = dict(),
+    **kwargs
+):
+    """Comparison of multiple cases in a single image."""
     num = len(img_dirs)
     if isinstance(n_row, int):
         num_rows = n_row
@@ -81,14 +102,11 @@ def gen_comparison2(
     fig_height = num_rows * (expected_size[1]/100*(1+0.1))
     fig, axes = plt.subplots(num_rows, num_cols, figsize=(fig_width, fig_height))
 
-    if not isinstance(img_dirs, OrderedDict):
-        img_dirs = OrderedDict(img_dirs)
-
     axes = axes.flatten()
     for ax in axes:
         ax.axis('off')
     for i,label in enumerate(img_dirs.keys()): 
-            img_fp = os.path.join(img_dirs[label], img_name)
+            img_fp = _check_fp(img_dirs[label], img_name, fmts=kwargs.get('fmts', None))
             img = Image.open(img_fp)
             if img.size != expected_size:
                 img = img.resize(expected_size)
@@ -103,12 +121,14 @@ def gen_comparison2(
 
 
 def gen_comparison3(
-        img_name_list,
-        img_dirs,
-        title_cfg=None,
-        expected_size=(256, 256),
-        auto_nb='abc',
-        tight_layout_cfg=dict()):
+    img_name_list: List[str],
+    img_dirs: Dict[str, str],
+    title_cfg: Dict[str, Any] = None,
+    expected_size: Tuple[int, int] = (256, 256),
+    auto_nb: str = 'abc',
+    tight_layout_cfg: Dict = dict(),
+    **kwargs,
+):
     if title_cfg is None:
         title_cfg = {
             'fontfamily': 'serif',
@@ -126,12 +146,10 @@ def gen_comparison3(
     elif num_cols == 1:
         axes = np.expand_dims(axes, 1)
 
-    if not isinstance(img_dirs, OrderedDict):
-        img_dirs = OrderedDict(img_dirs)
-
     for i,label in enumerate(img_dirs):
         for j in range(num_cols):
-            img_fp = os.path.join(img_dirs[label], img_name_list[j])
+            img_fp = _check_fp(img_dirs[label], img_name_list[j],
+                fmts=kwargs.get('fmts', None))
             img = Image.open(img_fp)
             if img.size != expected_size:
                 img = img.resize(expected_size)
