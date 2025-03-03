@@ -8,11 +8,14 @@ import torch
 import pyiqa
 import pandas as pd
 from tqdm import tqdm
+from torchvision.transforms import transforms
+from PIL import Image
 
 from utils.uciqe import getUCIQE
 from utils.uiqm import getUIQM
 from utils.ansi_escape import *
 from utils.df_save import save_df
+from networks.atuiqp.atuiqp import ATUIQP as ATUIQP_
 
 
 class NonRefMetric:
@@ -61,6 +64,22 @@ class UIQM(NonRefMetric):
         return getUIQM(inp)
 
 
+class ATUIQP(NonRefMetric):
+    def __init__(self, weights_fp, device='cpu', **kwargs):
+        super().__init__(**kwargs)
+        self.metric = ATUIQP_(**self.args).to(device)
+        self.metric.load_state_dict(torch.load(weights_fp, weights_only=True))
+        self.trans = transforms.Compose([
+            transforms.Resize((224, 224)),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225))
+        ])
+
+    def __call__(self, inp):
+        img = self.trans(Image.open(inp)).unsqueeze(0).to(device)
+        return self.metric(img).item()
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-inp', '--input_dir', type=str, required=True)
@@ -81,6 +100,7 @@ if __name__ == '__main__':
         uranker = URanker(device=device),
         uciqe = UCIQE(),
         uiqm = UIQM(),
+        atuiqp = ATUIQP('checkpoints/atuiqp/weights.pth', device=device)
     )
     columns = ['img_name',] + list(metrics.keys())
     df = pd.DataFrame(columns=columns)

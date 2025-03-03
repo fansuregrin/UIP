@@ -88,5 +88,5 @@ ${dry_run}python ${script_dir}/get_eval_m.py \
     --eval_type nonref \
     --file_fmt ${file_fmt} \
     --ds_names ${ds_names} \
-    --metric_names uranker uciqe uiqm \
+    --metric_names uranker atuiqp uciqe uiqm \
     --load_prefix ${load_prefix}

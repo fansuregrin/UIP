@@ -106,5 +106,5 @@ ${dry_run}python ${script_dir}/get_eval_m.py \
     ${epochs} \
     --eval_type nonref \
     --ds_names ${ds_names} \
-    --metric_names uranker uciqe uiqm \
+    --metric_names uranker uciqe uiqm atuiqp \
     --load_prefix ${load_prefix}

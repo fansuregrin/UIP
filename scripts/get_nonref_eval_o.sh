@@ -78,4 +78,4 @@ ${dry_run}python ${script_dir}/get_eval_o.py ${res_dir} \
     --eval_type nonref \
     --file_fmt ${file_fmt} \
     --ds_names ${ds_names} \
-    --metric_names uranker uciqe uiqm
+    --metric_names uranker atuiqp uciqe uiqm
